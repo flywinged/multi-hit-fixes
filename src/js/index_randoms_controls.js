@@ -208,25 +208,25 @@ function displayDamageHits(damage) {
 		return "Possible damage amounts: (" + damage.join(', ') + ")";
 	}
 
-	var chances = {0: 1};
+	var weights = {0: 1};
 	var allRolls = [];
 	for (var i = 0; i < damage.length; i++) {
 		allRolls = [];
-		var newChances = {};
+		var newWeights = {};
 		for (var j = 0; j < 16; j++) {
 			var roll = damage[i][j];
-			Object.keys(chances).forEach(function (existingdamage) {
-				var weight = chances[Number(existingdamage)];
+			Object.keys(weights).forEach(function (existingdamage) {
+				var weight = weights[Number(existingdamage)];
 				var total = roll + Number(existingdamage);
-				if (newChances[total] === undefined) {
-					newChances[total] = weight;
+				if (newWeights[total] === undefined) {
+					newWeights[total] = weight;
 					allRolls.push(total);
 				} else {
-					newChances[total] += weight;
+					newWeights[total] += weight;
 				}
 			});
 		}
-		chances = newChances;
+		weights = newWeights;
 	}
 
 	allRolls.sort();
@@ -239,7 +239,7 @@ function displayDamageHits(damage) {
 	var addedRolls = 1;
 	for (var i = 1; i < allRolls.length; i++) {
 		var roll = allRolls[i];
-		cumulative += chances[roll];
+		cumulative += weights[roll];
 
 		while (cumulative >= addedRolls * spacing) {
 			rolls.push(roll);

@@ -37,6 +37,6 @@ export declare class Result {
     };
 }
 export declare function damageRange(damage: Damage): [number, number];
-export declare function addDamageChance(damageChances: DamageRollWeightMap, damage: number, count?: number): void;
-export declare function convolveDamageChance(damageChances: DamageRollWeightMap, damage: number): DamageRollWeightMap;
-export declare function mergeDamageChances(d1: DamageRollWeightMap, d2: DamageRollWeightMap): void;
+export declare function addDamageWeight(damageWeights: DamageRollWeightMap, damage: number, count?: number): void;
+export declare function convolveDamageWeight(damageWeights: DamageRollWeightMap, damage: number): DamageRollWeightMap;
+export declare function mergeDamageWeights(d1: DamageRollWeightMap, d2: DamageRollWeightMap): void;

@@ -95,38 +95,37 @@ export function damageRange(
   }
 
   const d = damage as number[][]
-  let totalMinimums = d.reduce((accumulator, currentHitRolls) => {
-    return accumulator + currentHitRolls[0]
-  }, 0)
-
-  let totalMaximums = d.reduce((accumulator, currentHitRolls) => {
-    return accumulator + currentHitRolls[currentHitRolls.length - 1]
-  }, 0)
+  let totalMinimums = 0;
+  let totalMaximums = 0;
+  for (let i = 0; i < d.length; i++) {
+    totalMinimums += d[i][0];
+    totalMaximums += d[i][15];
+  }
 
   return [totalMinimums, totalMaximums]
 }
 
-export function addDamageChance(damageChances: DamageRollWeightMap, damage: number, count: number = 1) {
-  if (damageChances[damage] === undefined) {
-    damageChances[damage] = count;
+export function addDamageWeight(damageWeights: DamageRollWeightMap, damage: number, count: number = 1) {
+  if (damageWeights[damage] === undefined) {
+    damageWeights[damage] = count;
   } else {
-    damageChances[damage] += count;
+    damageWeights[damage] += count;
   }
 }
 
-export function convolveDamageChance(damageChances: DamageRollWeightMap, damage: number): DamageRollWeightMap {
+export function convolveDamageWeight(damageWeights: DamageRollWeightMap, damage: number): DamageRollWeightMap {
 
-  let newDamageChances: DamageRollWeightMap = []
+  let newDamageWeights: DamageRollWeightMap = []
 
-  damageChances.forEach((damageRoll, weight) => {
-    addDamageChance(newDamageChances, damageRoll + damage, weight)
+  damageWeights.forEach((damageRoll, weight) => {
+    addDamageWeight(newDamageWeights, damageRoll + damage, weight)
   })
 
-  return newDamageChances
+  return newDamageWeights
 }
 
-export function mergeDamageChances(d1: DamageRollWeightMap, d2: DamageRollWeightMap) {
+export function mergeDamageWeights(d1: DamageRollWeightMap, d2: DamageRollWeightMap) {
   d2.forEach((damageRoll, weight) => {
-    addDamageChance(d1, damageRoll, weight)
+    addDamageWeight(d1, damageRoll, weight)
   })
 }

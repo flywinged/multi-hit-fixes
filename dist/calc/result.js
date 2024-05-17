@@ -77,37 +77,37 @@ function damageRange(damage) {
         return [d_1[0], d_1[d_1.length - 1]];
     }
     var d = damage;
-    var totalMinimums = d.reduce(function (accumulator, currentHitRolls) {
-        return accumulator + currentHitRolls[0];
-    }, 0);
-    var totalMaximums = d.reduce(function (accumulator, currentHitRolls) {
-        return accumulator + currentHitRolls[currentHitRolls.length - 1];
-    }, 0);
+    var totalMinimums = 0;
+    var totalMaximums = 0;
+    for (var i = 0; i < d.length; i++) {
+        totalMinimums += d[i][0];
+        totalMaximums += d[i][15];
+    }
     return [totalMinimums, totalMaximums];
 }
 exports.damageRange = damageRange;
-function addDamageChance(damageChances, damage, count) {
+function addDamageWeight(damageWeights, damage, count) {
     if (count === void 0) { count = 1; }
-    if (damageChances[damage] === undefined) {
-        damageChances[damage] = count;
+    if (damageWeights[damage] === undefined) {
+        damageWeights[damage] = count;
     }
     else {
-        damageChances[damage] += count;
+        damageWeights[damage] += count;
     }
 }
-exports.addDamageChance = addDamageChance;
-function convolveDamageChance(damageChances, damage) {
-    var newDamageChances = [];
-    damageChances.forEach(function (damageRoll, weight) {
-        addDamageChance(newDamageChances, damageRoll + damage, weight);
+exports.addDamageWeight = addDamageWeight;
+function convolveDamageWeight(damageWeights, damage) {
+    var newDamageWeights = [];
+    damageWeights.forEach(function (damageRoll, weight) {
+        addDamageWeight(newDamageWeights, damageRoll + damage, weight);
     });
-    return newDamageChances;
+    return newDamageWeights;
 }
-exports.convolveDamageChance = convolveDamageChance;
-function mergeDamageChances(d1, d2) {
+exports.convolveDamageWeight = convolveDamageWeight;
+function mergeDamageWeights(d1, d2) {
     d2.forEach(function (damageRoll, weight) {
-        addDamageChance(d1, damageRoll, weight);
+        addDamageWeight(d1, damageRoll, weight);
     });
 }
-exports.mergeDamageChances = mergeDamageChances;
+exports.mergeDamageWeights = mergeDamageWeights;
 //# sourceMappingURL=result.js.map

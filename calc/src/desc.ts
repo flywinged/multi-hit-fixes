@@ -2,7 +2,7 @@ import {Generation, Weather, Terrain, TypeName, ID} from './data/interface';
 import {Field, Side} from './field';
 import {Move} from './move';
 import {Pokemon} from './pokemon';
-import {Damage, DamageRollWeightMap, addDamageChance, convolveDamageChance, damageRange, mergeDamageChances} from './result';
+import {Damage, DamageRollWeightMap, addDamageWeight, convolveDamageWeight, damageRange, mergeDamageWeights} from './result';
 import {error} from './util';
 // NOTE: This needs to come last to simplify bundling
 import {isGrounded} from './mechanics/util';
@@ -248,8 +248,8 @@ export function getKOChance(
   damageInput: Damage,
   err = true
 ) {
-  let {damageChances, accurate} = combine(damageInput);
-  let {rolls} = getDamageRolls(damageChances);
+  let {damageWeights, accurate} = combine(damageInput);
+  let {rolls} = getDamageRolls(damageWeights);
   let damage = rolls
   
   // Code doesn't really work if these aren't set.
@@ -285,7 +285,7 @@ export function getKOChance(
 
     // This block computes OHKOs
     const chance = computeKOChance(
-      damageChances, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter
+      damageWeights, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter
     );
     if (chance === 1) {
       return {chance, n: 1, text: `guaranteed OHKO${hazardsText}`}; // eot wasn't considered
@@ -301,7 +301,7 @@ export function getKOChance(
     // This block computes 2-4HKOs
     for (let i = 2; i <= 4; i++) {
       const chance = computeKOChance(
-        damageChances, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter
+        damageWeights, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter
       );
       if (chance === 1) {
         return {chance, n: i, text: `${qualifier || 'guaranteed '}${i}HKO${afterText}`};
@@ -330,7 +330,7 @@ export function getKOChance(
     }
   } else {
     const chance = computeKOChance(
-      damageChances, defender.maxHP() - hazards.damage,
+      damageWeights, defender.maxHP() - hazards.damage,
       eot.damage,
       move.hits || 1,
       move.timesUsed || 1,
@@ -391,36 +391,36 @@ export function getKOChance(
   return {chance: 0, n: 0, text: ''};
 }
 
-function combine(damage: Damage): {damageChances: DamageRollWeightMap, accurate: Boolean} {
-  let damageChances: DamageRollWeightMap = []
+function combine(damage: Damage): {damageWeights: DamageRollWeightMap, accurate: Boolean} {
+  let damageWeights: DamageRollWeightMap = []
 
   // Fixed Damage
   if (typeof damage === 'number') {
-    damageChances[damage] = 16;
-    return {damageChances, accurate: true};
+    damageWeights[damage] = 16;
+    return {damageWeights, accurate: true};
   }
 
   // Standard Damage
   if (damage.length === 16) {
     let d = damage as number[]
     for (let i = 0; i < 16; i++) {
-      addDamageChance(damageChances, d[i])
+      addDamageWeight(damageWeights, d[i])
     }
-    return {damageChances, accurate: true};
+    return {damageWeights, accurate: true};
   }
 
   // Multi-Hit Damage
   const d = damage as number[][];
-  damageChances[0] = 1;
+  damageWeights[0] = 1;
   for (let i = 0; i < d.length; i++) {
-    let nextChances: DamageRollWeightMap = [];
+    let nextWeights: DamageRollWeightMap = [];
     for (let j = 0; j < 16; j++) {
-      mergeDamageChances(nextChances, convolveDamageChance(damageChances, d[i][j]))
+      mergeDamageWeights(nextWeights, convolveDamageWeight(damageWeights, d[i][j]))
     }
-    damageChances = nextChances
+    damageWeights = nextWeights
   }
 
-  return {damageChances, accurate: d.length <= 3};
+  return {damageWeights, accurate: d.length <= 3};
 }
 
 const TRAPPING = [
@@ -649,7 +649,7 @@ function getEndOfTurn(
 }
 
 function computeKOChance(
-  damageChances: DamageRollWeightMap,
+  damageWeights: DamageRollWeightMap,
   hp: number,
   eot: number,
   hits: number,
@@ -659,7 +659,7 @@ function computeKOChance(
 ) {
 
   let nRolls = 4096
-  let {rolls} = getDamageRolls(damageChances, nRolls);
+  let {rolls} = getDamageRolls(damageWeights, nRolls);
 
   if (hits === 1) {
     if (rolls[nRolls - 1] < hp){
@@ -683,7 +683,7 @@ function computeKOChance(
     let c;
     if (i === 0 || rolls[i] !== rolls[i - 1]) {
       c = computeKOChance(
-        damageChances,
+        damageWeights,
         hp - rolls[i] + eot - toxicDamage,
         eot,
         hits - 1,
@@ -735,10 +735,10 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
   let total = 0;
   let allRolls: number[] = [];
   let rolls: number[] = [];
-  for (const [valueString, count] of Object.entries(d)) {
-    total += count;
-    allRolls.push(+valueString)
-  }
+  d.forEach((weight, damageRoll) => {
+    total += weight
+    allRolls.push(damageRoll)
+  })
   allRolls.sort()
 
   // Determine the approximate spacing needed between each of the 16 points
@@ -747,20 +747,20 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
   let cumulative = 0;
 
   let currentIndex = 1;
-  for (let roll of allRolls) {
-    cumulative += d[roll]
-    
+  allRolls.forEach(roll => {
+    if (currentIndex === count - 1) {
+      return;
+    }
+
+    cumulative += d[roll];
     while (cumulative >= currentIndex * spacing) {
       rolls.push(roll)
       currentIndex += 1
     }
 
-    if (currentIndex === (count - 1)) {
-      rolls.push(allRolls[allRolls.length - 1])
-      break;
-    }
-  }
+  })
 
+  rolls.push(allRolls[allRolls.length - 1]);
   return {rolls, total};
  
 }
