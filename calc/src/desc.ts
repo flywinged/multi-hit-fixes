@@ -248,8 +248,9 @@ export function getKOChance(
   damageInput: Damage,
   err = true
 ) {
-  let {damageWeights, accurate} = combine(damageInput);
-  let {rolls} = getDamageRolls(damageWeights);
+  let combineResult = combine(damageInput);
+  let damageWeights = combineResult.damageWeights;
+  let rolls = getDamageRolls(damageWeights);
   let damage = rolls
   
   // Code doesn't really work if these aren't set.
@@ -268,7 +269,7 @@ export function getKOChance(
   // multi-hit moves have too many possibilities for brute-forcing to work, so reduce it
   // to an approximate distribution
   let qualifier = '';
-  if (accurate === false) {
+  if (combineResult.accurate === false) {
     qualifier = "approx. "
   }
 
@@ -659,7 +660,7 @@ function computeKOChance(
 ) {
 
   let nRolls = 4096
-  let {rolls} = getDamageRolls(damageWeights, nRolls);
+  let rolls = getDamageRolls(damageWeights, nRolls);
 
   if (hits === 1) {
     if (rolls[nRolls - 1] < hp){
@@ -761,7 +762,7 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
   })
 
   rolls.push(allRolls[allRolls.length - 1]);
-  return {rolls, total};
+  return rolls;
  
 }
 
