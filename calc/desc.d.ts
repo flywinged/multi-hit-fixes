@@ -56,7 +56,7 @@ export declare function getRecoil(gen: Generation, attacker: Pokemon, defender: 
     recoil: number | [number, number];
     text: string;
 };
-export declare function getKOChance(gen: Generation, attacker: Pokemon, defender: Pokemon, move: Move, field: Field, damage: Damage, err?: boolean): {
+export declare function getKOChance(gen: Generation, attacker: Pokemon, defender: Pokemon, move: Move, field: Field, damageInput: Damage, err?: boolean): {
     chance: number;
     n: number;
     text: string;

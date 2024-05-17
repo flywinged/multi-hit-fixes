@@ -224,6 +224,7 @@ th {
     margin-left: 10px;
 }
 .small-text {
+    white-space: pre-line;
     font-size: 0.8em;
 }
 .panel {

@@ -5,7 +5,8 @@ var util_1 = require("../util");
 var items_1 = require("../items");
 var result_1 = require("../result");
 var util_2 = require("./util");
-function calculateSMSSSV(gen, attacker, defender, move, field) {
+function calculateSMSSSV(gen, attacker, defender, move, field, calcingMultiHit) {
+    if (calcingMultiHit === void 0) { calcingMultiHit = false; }
     (0, util_2.checkAirLock)(attacker, field);
     (0, util_2.checkAirLock)(defender, field);
     (0, util_2.checkForecast)(attacker, field.weather);
@@ -38,6 +39,23 @@ function calculateSMSSSV(gen, attacker, defender, move, field) {
         isWonderRoom: field.isWonderRoom
     };
     var result = new result_1.Result(gen, attacker, defender, move, field, 0, desc);
+    if (!calcingMultiHit && (move.hits > 1)) {
+        switch (move.name) {
+            case "Triple Kick":
+                result.damage = multiHitCalc(gen, attacker, defender, move, field, [10, 20, 30]);
+                return result;
+            case "Triple Axel":
+                result.damage = multiHitCalc(gen, attacker, defender, move, field, [20, 40, 60]);
+                return result;
+            default:
+                var bpArray = [];
+                for (var i = 0; i < move.hits; i++) {
+                    bpArray.push(move.bp);
+                }
+                result.damage = multiHitCalc(gen, attacker, defender, move, field, bpArray);
+                return result;
+        }
+    }
     if (move.category === 'Status' && !move.named('Nature Power')) {
         return result;
     }
@@ -242,12 +260,16 @@ function calculateSMSSSV(gen, attacker, defender, move, field) {
     desc.HPEVs = "".concat(defender.ivs.hp, " HP");
     var fixedDamage = (0, util_2.handleFixedDamageMoves)(attacker, move);
     if (fixedDamage) {
+        var damageArray = [];
+        for (var i = 0; i < 16; i++) {
+            damageArray.push(fixedDamage);
+        }
         if (attacker.hasAbility('Parental Bond')) {
-            result.damage = [fixedDamage, fixedDamage];
+            result.damage = [damageArray, damageArray];
             desc.attackerAbility = attacker.ability;
         }
         else {
-            result.damage = fixedDamage;
+            result.damage = damageArray;
         }
         return result;
     }
@@ -576,14 +598,6 @@ function calculateBasePowerSMSSSV(gen, attacker, defender, move, field, hasAteAb
             break;
         case 'Water Shuriken':
             basePower = attacker.named('Greninja-Ash') && attacker.hasAbility('Battle Bond') ? 20 : 15;
-            desc.moveBP = basePower;
-            break;
-        case 'Triple Axel':
-            basePower = move.hits === 2 ? 30 : move.hits === 3 ? 40 : 20;
-            desc.moveBP = basePower;
-            break;
-        case 'Triple Kick':
-            basePower = move.hits === 2 ? 15 : move.hits === 3 ? 30 : 10;
             desc.moveBP = basePower;
             break;
         case 'Crush Grip':
@@ -1161,4 +1175,12 @@ exports.calculateFinalModsSMSSSV = calculateFinalModsSMSSSV;
 function hasTerrainSeed(pokemon) {
     return pokemon.hasItem('Electric Seed', 'Misty Seed', 'Grassy Seed', 'Psychic Seed');
 }
+var multiHitCalc = function (gen, attacker, defender, move, field, bps) {
+    var damages = bps.map(function (bp) {
+        move.bp = bp;
+        var damage = calculateSMSSSV(gen, attacker, defender, move, field, true).damage;
+        return damage;
+    });
+    return damages;
+};
 //# sourceMappingURL=gen789.js.map
