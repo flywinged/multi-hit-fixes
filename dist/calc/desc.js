@@ -274,7 +274,7 @@ function getKOChance(gen, attacker, defender, move, field, damageInput, err) {
 }
 exports.getKOChance = getKOChance;
 function combine(damage) {
-    var damageChances = {};
+    var damageChances = [];
     if (typeof damage === 'number') {
         damageChances[damage] = 16;
         return { damageChances: damageChances, accurate: true };
@@ -289,7 +289,7 @@ function combine(damage) {
     var d = damage;
     damageChances[0] = 1;
     for (var i = 0; i < d.length; i++) {
-        var nextChances = {};
+        var nextChances = [];
         for (var j = 0; j < 16; j++) {
             (0, result_1.mergeDamageChances)(nextChances, (0, result_1.convolveDamageChance)(damageChances, d[i][j]));
         }

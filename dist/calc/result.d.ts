@@ -4,9 +4,7 @@ import { Field } from './field';
 import { Move } from './move';
 import { Pokemon } from './pokemon';
 export type Damage = number | number[] | [number, number] | number[][];
-export type DamageChanceMap = {
-    [key: string]: number;
-};
+export type DamageRollWeightMap = number[];
 export declare class Result {
     gen: Generation;
     attacker: Pokemon;
@@ -39,6 +37,6 @@ export declare class Result {
     };
 }
 export declare function damageRange(damage: Damage): [number, number];
-export declare function addDamageChance(damageChances: DamageChanceMap, damage: number, count?: number): void;
-export declare function convolveDamageChance(damageChances: DamageChanceMap, damage: number): DamageChanceMap;
-export declare function mergeDamageChances(d1: DamageChanceMap, d2: DamageChanceMap): void;
+export declare function addDamageChance(damageChances: DamageRollWeightMap, damage: number, count?: number): void;
+export declare function convolveDamageChance(damageChances: DamageRollWeightMap, damage: number): DamageRollWeightMap;
+export declare function mergeDamageChances(d1: DamageRollWeightMap, d2: DamageRollWeightMap): void;

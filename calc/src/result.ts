@@ -5,7 +5,7 @@ import {Move} from './move';
 import {Pokemon} from './pokemon';
 
 export type Damage = number | number[] | [number, number] | number[][];
-export type DamageChanceMap = { [key: string]: number }
+export type DamageRollWeightMap = number[]
 
 export class Result {
   gen: Generation;
@@ -106,7 +106,7 @@ export function damageRange(
   return [totalMinimums, totalMaximums]
 }
 
-export function addDamageChance(damageChances: DamageChanceMap, damage: number, count: number = 1) {
+export function addDamageChance(damageChances: DamageRollWeightMap, damage: number, count: number = 1) {
   if (damageChances[damage] === undefined) {
     damageChances[damage] = count;
   } else {
@@ -114,21 +114,19 @@ export function addDamageChance(damageChances: DamageChanceMap, damage: number, 
   }
 }
 
-export function convolveDamageChance(damageChances: DamageChanceMap, damage: number): DamageChanceMap {
+export function convolveDamageChance(damageChances: DamageRollWeightMap, damage: number): DamageRollWeightMap {
 
-  let newDamageChances: DamageChanceMap = {}
+  let newDamageChances: DamageRollWeightMap = []
 
-  for (const [stringValue, chance] of Object.entries(damageChances)) {
-    let value: number = +stringValue
-    addDamageChance(newDamageChances, value + damage, chance)
-  }
+  damageChances.forEach((damageRoll, weight) => {
+    addDamageChance(newDamageChances, damageRoll + damage, weight)
+  })
 
   return newDamageChances
 }
 
-export function mergeDamageChances(d1: DamageChanceMap, d2: DamageChanceMap) {
-  for (const [stringValue, chance] of Object.entries(d2)) {
-    let value: number = +stringValue
-    addDamageChance(d1, value, chance)
-  }
+export function mergeDamageChances(d1: DamageRollWeightMap, d2: DamageRollWeightMap) {
+  d2.forEach((damageRoll, weight) => {
+    addDamageChance(d1, damageRoll, weight)
+  })
 }

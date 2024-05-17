@@ -2,7 +2,7 @@ import {Generation, Weather, Terrain, TypeName, ID} from './data/interface';
 import {Field, Side} from './field';
 import {Move} from './move';
 import {Pokemon} from './pokemon';
-import {Damage, DamageChanceMap, addDamageChance, convolveDamageChance, damageRange, mergeDamageChances} from './result';
+import {Damage, DamageRollWeightMap, addDamageChance, convolveDamageChance, damageRange, mergeDamageChances} from './result';
 import {error} from './util';
 // NOTE: This needs to come last to simplify bundling
 import {isGrounded} from './mechanics/util';
@@ -391,8 +391,8 @@ export function getKOChance(
   return {chance: 0, n: 0, text: ''};
 }
 
-function combine(damage: Damage): {damageChances: DamageChanceMap, accurate: Boolean} {
-  let damageChances: DamageChanceMap = {}
+function combine(damage: Damage): {damageChances: DamageRollWeightMap, accurate: Boolean} {
+  let damageChances: DamageRollWeightMap = []
 
   // Fixed Damage
   if (typeof damage === 'number') {
@@ -413,7 +413,7 @@ function combine(damage: Damage): {damageChances: DamageChanceMap, accurate: Boo
   const d = damage as number[][];
   damageChances[0] = 1;
   for (let i = 0; i < d.length; i++) {
-    let nextChances: DamageChanceMap = {};
+    let nextChances: DamageRollWeightMap = [];
     for (let j = 0; j < 16; j++) {
       mergeDamageChances(nextChances, convolveDamageChance(damageChances, d[i][j]))
     }
@@ -649,7 +649,7 @@ function getEndOfTurn(
 }
 
 function computeKOChance(
-  damageChances: DamageChanceMap,
+  damageChances: DamageRollWeightMap,
   hp: number,
   eot: number,
   hits: number,
@@ -729,7 +729,7 @@ function predictTotal(
   return total;
 }
 
-function getDamageRolls(d: DamageChanceMap, count: number = 16) {
+function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
 
   // Reduce damage map to a list of 16 approximate values spaced evenly apart
   let total = 0;
