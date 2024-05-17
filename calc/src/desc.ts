@@ -2,7 +2,7 @@ import {Generation, Weather, Terrain, TypeName, ID} from './data/interface';
 import {Field, Side} from './field';
 import {Move} from './move';
 import {Pokemon} from './pokemon';
-import {Damage, DamageChanceMap, addDamageChance, convolveDamageChance, damageRange, mergeDamageChances} from './result';
+import {Damage, DamageRollWeightMap, addDamageChance, convolveDamageWeight, damageRange, mergeDamageWeights} from './result';
 import {error} from './util';
 // NOTE: This needs to come last to simplify bundling
 import {isGrounded} from './mechanics/util';
@@ -391,12 +391,12 @@ export function getKOChance(
   return {chance: 0, n: 0, text: ''};
 }
 
-function combine(damage: Damage): {damageChances: DamageChanceMap, accurate: Boolean} {
-  let damageChances: DamageChanceMap = {}
+function combine(damage: Damage): {damageChances: DamageRollWeightMap, accurate: Boolean} {
+  let damageChances: DamageRollWeightMap = new Map();
 
   // Fixed Damage
   if (typeof damage === 'number') {
-    damageChances[damage] = 16;
+    damageChances.set(damage, 16);
     return {damageChances, accurate: true};
   }
 
@@ -411,11 +411,11 @@ function combine(damage: Damage): {damageChances: DamageChanceMap, accurate: Boo
 
   // Multi-Hit Damage
   const d = damage as number[][];
-  damageChances[0] = 1;
+  damageChances.set(0, 1);
   for (let i = 0; i < d.length; i++) {
-    let nextChances: DamageChanceMap = {};
+    let nextChances: DamageRollWeightMap = new Map();
     for (let j = 0; j < 16; j++) {
-      mergeDamageChances(nextChances, convolveDamageChance(damageChances, d[i][j]))
+      mergeDamageWeights(nextChances, convolveDamageWeight(damageChances, d[i][j]))
     }
     damageChances = nextChances
   }
@@ -649,7 +649,7 @@ function getEndOfTurn(
 }
 
 function computeKOChance(
-  damageChances: DamageChanceMap,
+  damageChances: DamageRollWeightMap,
   hp: number,
   eot: number,
   hits: number,
@@ -729,16 +729,16 @@ function predictTotal(
   return total;
 }
 
-function getDamageRolls(d: DamageChanceMap, count: number = 16) {
+function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
 
   // Reduce damage map to a list of 16 approximate values spaced evenly apart
   let total = 0;
   let allRolls: number[] = [];
   let rolls: number[] = [];
-  for (const [valueString, count] of Object.entries(d)) {
-    total += count;
+  d.forEach((valueString, weight) => {
+    total += weight;
     allRolls.push(+valueString)
-  }
+  })
   allRolls.sort()
 
   // Determine the approximate spacing needed between each of the 16 points
@@ -748,7 +748,11 @@ function getDamageRolls(d: DamageChanceMap, count: number = 16) {
 
   let currentIndex = 1;
   for (let roll of allRolls) {
-    cumulative += d[roll]
+    let rollWeight = d.get(roll);
+    if (rollWeight === undefined) {
+      continue
+    }
+    cumulative += rollWeight;
     
     while (cumulative >= currentIndex * spacing) {
       rolls.push(roll)
