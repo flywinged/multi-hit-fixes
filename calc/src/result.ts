@@ -4,7 +4,7 @@ import {Field} from './field';
 import {Move} from './move';
 import {Pokemon} from './pokemon';
 
-export type Damage = number | number[] | [number, number] | number[][];
+export type Damage = number | number[] | number[][];
 export type DamageRollWeightMap = number[]
 
 export class Result {
@@ -117,7 +117,7 @@ export function convolveDamageWeight(damageWeights: DamageRollWeightMap, damage:
 
   let newDamageWeights: DamageRollWeightMap = []
 
-  damageWeights.forEach((damageRoll, weight) => {
+  damageWeights.forEach((weight, damageRoll) => {
     addDamageWeight(newDamageWeights, damageRoll + damage, weight)
   })
 
@@ -125,7 +125,7 @@ export function convolveDamageWeight(damageWeights: DamageRollWeightMap, damage:
 }
 
 export function mergeDamageWeights(d1: DamageRollWeightMap, d2: DamageRollWeightMap) {
-  d2.forEach((damageRoll, weight) => {
+  d2.forEach((weight, damageRoll) => {
     addDamageWeight(d1, damageRoll, weight)
   })
 }

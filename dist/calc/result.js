@@ -98,14 +98,14 @@ function addDamageWeight(damageWeights, damage, count) {
 exports.addDamageWeight = addDamageWeight;
 function convolveDamageWeight(damageWeights, damage) {
     var newDamageWeights = [];
-    damageWeights.forEach(function (damageRoll, weight) {
+    damageWeights.forEach(function (weight, damageRoll) {
         addDamageWeight(newDamageWeights, damageRoll + damage, weight);
     });
     return newDamageWeights;
 }
 exports.convolveDamageWeight = convolveDamageWeight;
 function mergeDamageWeights(d1, d2) {
-    d2.forEach(function (damageRoll, weight) {
+    d2.forEach(function (weight, damageRoll) {
         addDamageWeight(d1, damageRoll, weight);
     });
 }

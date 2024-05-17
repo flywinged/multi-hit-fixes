@@ -23,8 +23,8 @@ function display(gen, attacker, defender, move, field, damage, rawDesc, notation
     if (notation === void 0) { notation = '%'; }
     if (err === void 0) { err = true; }
     var _a = __read((0, result_1.damageRange)(damage), 2), minDamage = _a[0], maxDamage = _a[1];
-    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
-    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
+    var min = typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1];
+    var max = typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1];
     var minDisplay = toDisplay(notation, min, defender.maxHP());
     var maxDisplay = toDisplay(notation, max, defender.maxHP());
     var desc = buildDescription(rawDesc, attacker, defender);
@@ -38,8 +38,8 @@ exports.display = display;
 function displayMove(gen, attacker, defender, move, damage, notation) {
     if (notation === void 0) { notation = '%'; }
     var _a = __read((0, result_1.damageRange)(damage), 2), minDamage = _a[0], maxDamage = _a[1];
-    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
-    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
+    var min = typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1];
+    var max = typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1];
     var minDisplay = toDisplay(notation, min, defender.maxHP());
     var maxDisplay = toDisplay(notation, max, defender.maxHP());
     var recoveryText = getRecovery(gen, attacker, defender, move, damage, notation).text;
@@ -165,8 +165,9 @@ function getRecoil(gen, attacker, defender, move, damage, notation) {
 exports.getRecoil = getRecoil;
 function getKOChance(gen, attacker, defender, move, field, damageInput, err) {
     if (err === void 0) { err = true; }
-    var _a = combine(damageInput), damageWeights = _a.damageWeights, accurate = _a.accurate;
-    var rolls = getDamageRolls(damageWeights).rolls;
+    var combineResult = combine(damageInput);
+    var damageWeights = combineResult.damageWeights;
+    var rolls = getDamageRolls(damageWeights);
     var damage = rolls;
     if (move.timesUsed === undefined)
         move.timesUsed = 1;
@@ -179,7 +180,7 @@ function getKOChance(gen, attacker, defender, move, field, damageInput, err) {
     var eot = getEndOfTurn(gen, attacker, defender, move, field);
     var toxicCounter = defender.hasStatus('tox') && !defender.hasAbility('Magic Guard') ? defender.toxicCounter : 0;
     var qualifier = '';
-    if (accurate === false) {
+    if (combineResult.accurate === false) {
         qualifier = "approx. ";
     }
     var hazardsText = hazards.texts.length > 0
@@ -497,7 +498,7 @@ function getEndOfTurn(gen, attacker, defender, move, field) {
 }
 function computeKOChance(damageWeights, hp, eot, hits, timesUsed, maxHP, toxicCounter) {
     var nRolls = 4096;
-    var rolls = getDamageRolls(damageWeights, nRolls).rolls;
+    var rolls = getDamageRolls(damageWeights, nRolls);
     if (hits === 1) {
         if (rolls[nRolls - 1] < hp) {
             return 0;
@@ -575,7 +576,7 @@ function getDamageRolls(d, count) {
         }
     });
     rolls.push(allRolls[allRolls.length - 1]);
-    return { rolls: rolls, total: total };
+    return rolls;
 }
 function buildDescription(description, attacker, defender) {
     var _a = __read(getDescriptionLevels(attacker, defender), 2), attackerLevel = _a[0], defenderLevel = _a[1];
@@ -744,6 +745,6 @@ function formatChance(chance) {
     if (i > 2) {
         return "1 in ~" + Math.round((1 - chance) / (chance)).toString() + " chance to";
     }
-    return (Math.round(chance * Math.pow(10, i + 3)) / Math.pow(10, i + 1)).toString() + "% chance to";
+    return (Math.round(chance * Math.pow(10, i + 4)) / Math.pow(10, i + 2)).toString() + "% chance to";
 }
 //# sourceMappingURL=desc.js.map

@@ -279,12 +279,12 @@ function displayDamageHits(damage) {
 	}
 
 	if (differentHits.length === 1) {
-		returnString += "\nPossible damage amounts for each hit: (" + differentHits[0] + ")";
+		returnString += "\nPossible damage amounts for each hit: (" + differentHits[0].join(", ") + ")";
 		return returnString;
 	}
 
 	for (var i = 0; i < differentHits.length; i++) {
-		returnString += "\nPossible damage amounts for hit " + (i + 1) + ": (" + differentHits[i] + ")";
+		returnString += "\nPossible damage amounts for hit " + (i + 1) + ": (" + differentHits[i].join(", ") + ")";
 	}
 
 	return returnString;

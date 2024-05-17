@@ -63,8 +63,8 @@ export function display(
   err = true
 ) {
   const [minDamage, maxDamage] = damageRange(damage);
-  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
-  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
+  const min = typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1];
+  const max = typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1];
 
   const minDisplay = toDisplay(notation, min, defender.maxHP());
   const maxDisplay = toDisplay(notation, max, defender.maxHP());
@@ -86,8 +86,8 @@ export function displayMove(
   notation = '%'
 ) {
   const [minDamage, maxDamage] = damageRange(damage);
-  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
-  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
+  const min = typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1];
+  const max = typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1];
 
   const minDisplay = toDisplay(notation, min, defender.maxHP());
   const maxDisplay = toDisplay(notation, max, defender.maxHP());
