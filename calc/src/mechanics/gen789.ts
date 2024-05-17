@@ -13,7 +13,7 @@ import {RawDesc} from '../desc';
 import {Field} from '../field';
 import {Move} from '../move';
 import {Pokemon} from '../pokemon';
-import {Result} from '../result';
+import {Result, Damage} from '../result';
 import {
   chainMods,
   checkAirLock,
@@ -48,9 +48,12 @@ export function calculateSMSSSV(
   attacker: Pokemon,
   defender: Pokemon,
   move: Move,
-  field: Field
+  field: Field,
+  calcingMultiHit: Boolean = false,
 ) {
   // #region Initial
+
+  // Main Function
 
   checkAirLock(attacker, field);
   checkAirLock(defender, field);
@@ -90,6 +93,26 @@ export function calculateSMSSSV(
   };
 
   const result = new Result(gen, attacker, defender, move, field, 0, desc);
+
+  // Proper handling of multihit moves
+  if (!calcingMultiHit && (move.hits > 1)) {
+
+    switch (move.name) {
+      case "Triple Kick":
+        result.damage = multiHitCalc(gen, attacker, defender, move, field, [10, 20, 30])
+        return result;
+      case "Triple Axel":
+        result.damage = multiHitCalc(gen, attacker, defender, move, field, [20, 40, 60])
+        return result;
+      default:
+        let bpArray = [];
+        for (let i = 0; i < move.hits; i++) {
+          bpArray.push(move.bp);
+        }
+        result.damage = multiHitCalc(gen, attacker, defender, move, field, bpArray)
+        return result;
+    }
+  }
 
   if (move.category === 'Status' && !move.named('Nature Power')) {
     return result;
@@ -359,11 +382,15 @@ export function calculateSMSSSV(
 
   const fixedDamage = handleFixedDamageMoves(attacker, move);
   if (fixedDamage) {
+    let damageArray = [];
+    for (let i = 0; i < 16; i++) {
+      damageArray.push(fixedDamage)
+    }
     if (attacker.hasAbility('Parental Bond')) {
-      result.damage = [fixedDamage, fixedDamage];
+      result.damage = [damageArray, damageArray];
       desc.attackerAbility = attacker.ability;
     } else {
-      result.damage = fixedDamage;
+      result.damage = damageArray;
     }
     return result;
   }
@@ -766,16 +793,6 @@ export function calculateBasePowerSMSSSV(
     break;
   case 'Water Shuriken':
     basePower = attacker.named('Greninja-Ash') && attacker.hasAbility('Battle Bond') ? 20 : 15;
-    desc.moveBP = basePower;
-    break;
-  // Triple Axel's damage doubles after each consecutive hit (20, 40, 60), this is a hack
-  case 'Triple Axel':
-    basePower = move.hits === 2 ? 30 : move.hits === 3 ? 40 : 20;
-    desc.moveBP = basePower;
-    break;
-  // Triple Kick's damage doubles after each consecutive hit (10, 20, 30), this is a hack
-  case 'Triple Kick':
-    basePower = move.hits === 2 ? 15 : move.hits === 3 ? 30 : 10;
     desc.moveBP = basePower;
     break;
   case 'Crush Grip':
@@ -1520,4 +1537,23 @@ export function calculateFinalModsSMSSSV(
 
 function hasTerrainSeed(pokemon: Pokemon) {
   return pokemon.hasItem('Electric Seed', 'Misty Seed', 'Grassy Seed', 'Psychic Seed');
+}
+
+
+const multiHitCalc = (
+  gen: Generation,
+  attacker: Pokemon,
+  defender: Pokemon,
+  move: Move,
+  field: Field,
+  bps: number[],
+) : Damage => {
+
+  let damages = bps.map(bp => {
+    move.bp = bp;
+    let damage = calculateSMSSSV(gen, attacker, defender, move, field, true).damage as number[];
+    return damage
+  })
+
+  return damages
 }

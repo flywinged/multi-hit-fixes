@@ -15,17 +15,27 @@ var __read = (this && this.__read) || function (o, n) {
     }
     return ar;
 };
+var __values = (this && this.__values) || function(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+};
 exports.__esModule = true;
 
 var result_1 = require("./result");
-var util_1 = require("./util");
-var util_2 = require("./mechanics/util");
+var util_1 = require("./mechanics/util");
 function display(gen, attacker, defender, move, field, damage, rawDesc, notation, err) {
     if (notation === void 0) { notation = '%'; }
     if (err === void 0) { err = true; }
     var _a = __read((0, result_1.damageRange)(damage), 2), minDamage = _a[0], maxDamage = _a[1];
-    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]) * move.hits;
-    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]) * move.hits;
+    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
+    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
     var minDisplay = toDisplay(notation, min, defender.maxHP());
     var maxDisplay = toDisplay(notation, max, defender.maxHP());
     var desc = buildDescription(rawDesc, attacker, defender);
@@ -39,8 +49,8 @@ exports.display = display;
 function displayMove(gen, attacker, defender, move, damage, notation) {
     if (notation === void 0) { notation = '%'; }
     var _a = __read((0, result_1.damageRange)(damage), 2), minDamage = _a[0], maxDamage = _a[1];
-    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]) * move.hits;
-    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]) * move.hits;
+    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
+    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
     var minDisplay = toDisplay(notation, min, defender.maxHP());
     var maxDisplay = toDisplay(notation, max, defender.maxHP());
     var recoveryText = getRecovery(gen, attacker, defender, move, damage, notation).text;
@@ -60,8 +70,8 @@ function getRecovery(gen, attacker, defender, move, damage, notation) {
     if (attacker.hasItem('Shell Bell') && !ignoresShellBell) {
         var max = Math.round(defender.maxHP() / 8);
         for (var i = 0; i < minD.length; i++) {
-            recovery[0] += Math.min(Math.round(minD[i] * move.hits / 8), max);
-            recovery[1] += Math.min(Math.round(maxD[i] * move.hits / 8), max);
+            recovery[0] += Math.min(Math.round(minD[i] / 8), max);
+            recovery[1] += Math.min(Math.round(maxD[i] / 8), max);
         }
     }
     if (move.named('G-Max Finale')) {
@@ -71,8 +81,8 @@ function getRecovery(gen, attacker, defender, move, damage, notation) {
         var percentHealed = move.drain[0] / move.drain[1];
         var max = Math.round(defender.maxHP() * percentHealed);
         for (var i = 0; i < minD.length; i++) {
-            recovery[0] += Math.min(Math.round(minD[i] * move.hits * percentHealed), max);
-            recovery[1] += Math.min(Math.round(maxD[i] * move.hits * percentHealed), max);
+            recovery[0] += Math.min(Math.round(minD[i] * percentHealed), max);
+            recovery[1] += Math.min(Math.round(maxD[i] * percentHealed), max);
         }
     }
     if (recovery[1] === 0)
@@ -86,8 +96,8 @@ exports.getRecovery = getRecovery;
 function getRecoil(gen, attacker, defender, move, damage, notation) {
     if (notation === void 0) { notation = '%'; }
     var _a = __read((0, result_1.damageRange)(damage), 2), minDamage = _a[0], maxDamage = _a[1];
-    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]) * move.hits;
-    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]) * move.hits;
+    var min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
+    var max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
     var recoil = [0, 0];
     var text = '';
     var damageOverflow = minDamage > defender.curHP() || maxDamage > defender.curHP();
@@ -164,17 +174,11 @@ function getRecoil(gen, attacker, defender, move, damage, notation) {
     return { recoil: recoil, text: text };
 }
 exports.getRecoil = getRecoil;
-function getKOChance(gen, attacker, defender, move, field, damage, err) {
+function getKOChance(gen, attacker, defender, move, field, damageInput, err) {
     if (err === void 0) { err = true; }
-    damage = combine(damage);
-    if (isNaN(damage[0])) {
-        (0, util_1.error)(err, 'damage[0] must be a number.');
-        return { chance: 0, n: 0, text: '' };
-    }
-    if (damage[damage.length - 1] === 0) {
-        (0, util_1.error)(err, 'damage[damage.length - 1] === 0.');
-        return { chance: 0, n: 0, text: '' };
-    }
+    var _a = combine(damageInput), damageChances = _a.damageChances, accurate = _a.accurate;
+    var rolls = getDamageRolls(damageChances).rolls;
+    var damage = rolls;
     if (move.timesUsed === undefined)
         move.timesUsed = 1;
     if (move.timesUsedWithMetronome === undefined)
@@ -186,9 +190,8 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
     var eot = getEndOfTurn(gen, attacker, defender, move, field);
     var toxicCounter = defender.hasStatus('tox') && !defender.hasAbility('Magic Guard') ? defender.toxicCounter : 0;
     var qualifier = '';
-    if (move.hits > 1) {
-        qualifier = 'approx. ';
-        damage = squashMultihit(gen, damage, move.hits, err);
+    if (accurate === false) {
+        qualifier = "approx. ";
     }
     var hazardsText = hazards.texts.length > 0
         ? ' after ' + serializeText(hazards.texts)
@@ -197,7 +200,7 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
         ? ' after ' + serializeText(hazards.texts.concat(eot.texts))
         : '';
     if ((move.timesUsed === 1 && move.timesUsedWithMetronome === 1) || move.isZ) {
-        var chance = computeKOChance(damage, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter);
+        var chance = computeKOChance(damageChances, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter);
         if (chance === 1) {
             return { chance: chance, n: 1, text: "guaranteed OHKO".concat(hazardsText) };
         }
@@ -205,14 +208,11 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
             return {
                 chance: chance,
                 n: 1,
-                text: qualifier + Math.round(chance * 1000) / 10 + "% chance to OHKO".concat(hazardsText)
+                text: qualifier + formatChance(chance) + " OHKO".concat(hazardsText)
             };
         }
-        if (damage.length === 256) {
-            qualifier = 'approx. ';
-        }
         for (var i = 2; i <= 4; i++) {
-            var chance_1 = computeKOChance(damage, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter);
+            var chance_1 = computeKOChance(damageChances, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter);
             if (chance_1 === 1) {
                 return { chance: chance_1, n: i, text: "".concat(qualifier || 'guaranteed ').concat(i, "HKO").concat(afterText) };
             }
@@ -220,7 +220,7 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
                 return {
                     chance: chance_1,
                     n: i,
-                    text: qualifier + Math.round(chance_1 * 1000) / 10 + "% chance to ".concat(i, "HKO").concat(afterText)
+                    text: qualifier + formatChance(chance_1) + " ".concat(i, "HKO").concat(afterText)
                 };
             }
         }
@@ -236,7 +236,7 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
         }
     }
     else {
-        var chance = computeKOChance(damage, defender.maxHP() - hazards.damage, eot.damage, move.hits || 1, move.timesUsed || 1, defender.maxHP(), toxicCounter);
+        var chance = computeKOChance(damageChances, defender.maxHP() - hazards.damage, eot.damage, move.hits || 1, move.timesUsed || 1, defender.maxHP(), toxicCounter);
         if (chance === 1) {
             return {
                 chance: chance,
@@ -249,8 +249,8 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
                 chance: chance,
                 n: move.timesUsed,
                 text: qualifier +
-                    Math.round(chance * 1000) / 10 +
-                    "% chance to ".concat(move.timesUsed, "HKO").concat(afterText)
+                    formatChance(chance) +
+                    " ".concat(move.timesUsed, "HKO").concat(afterText)
             };
         }
         if (predictTotal(damage[0], eot.damage, move.hits, move.timesUsed, toxicCounter, defender.maxHP()) >=
@@ -274,24 +274,28 @@ function getKOChance(gen, attacker, defender, move, field, damage, err) {
 }
 exports.getKOChance = getKOChance;
 function combine(damage) {
-    if (typeof damage === 'number')
-        return [damage];
-    if (damage.length > 2) {
-        if (damage[0] > damage[damage.length - 1])
-            damage = damage.slice().sort();
-        return damage;
+    var damageChances = {};
+    if (typeof damage === 'number') {
+        damageChances[damage] = 16;
+        return { damageChances: damageChances, accurate: true };
     }
-    if (typeof damage[0] === 'number' && typeof damage[1] === 'number') {
-        return [damage[0] + damage[1]];
+    if (damage.length === 16) {
+        var d_1 = damage;
+        for (var i = 0; i < 16; i++) {
+            (0, result_1.addDamageChance)(damageChances, d_1[i]);
+        }
+        return { damageChances: damageChances, accurate: true };
     }
     var d = damage;
-    var combined = [];
-    for (var i = 0; i < d[0].length; i++) {
-        for (var j = 0; j < d[1].length; j++) {
-            combined.push(d[0][i] + d[1][j]);
+    damageChances[0] = 1;
+    for (var i = 0; i < d.length; i++) {
+        var nextChances = {};
+        for (var j = 0; j < 16; j++) {
+            (0, result_1.mergeDamageChances)(nextChances, (0, result_1.convolveDamageChance)(damageChances, d[i][j]));
         }
+        damageChances = nextChances;
     }
-    return combined.sort();
+    return { damageChances: damageChances, accurate: d.length <= 3 };
 }
 var TRAPPING = [
     'Bind', 'Clamp', 'Fire Spin', 'Infestation', 'Magma Storm', 'Sand Tomb',
@@ -419,7 +423,7 @@ function getEndOfTurn(gen, attacker, defender, move, field) {
         }
     }
     if (field.hasTerrain('Grassy')) {
-        if ((0, util_2.isGrounded)(defender, field)) {
+        if ((0, util_1.isGrounded)(defender, field)) {
             damage += Math.floor(defender.maxHP() / 16);
             texts.push('Grassy Terrain recovery');
         }
@@ -502,14 +506,16 @@ function getEndOfTurn(gen, attacker, defender, move, field) {
     }
     return { damage: damage, texts: texts };
 }
-function computeKOChance(damage, hp, eot, hits, timesUsed, maxHP, toxicCounter) {
-    var n = damage.length;
+function computeKOChance(damageChances, hp, eot, hits, timesUsed, maxHP, toxicCounter) {
+    var nRolls = 4096;
+    var rolls = getDamageRolls(damageChances, nRolls).rolls;
     if (hits === 1) {
-        for (var i = 0; i < n; i++) {
-            if (damage[n - 1] < hp)
-                return 0;
-            if (damage[i] >= hp) {
-                return (n - i) / n;
+        if (rolls[nRolls - 1] < hp) {
+            return 0;
+        }
+        for (var i = 0; i < nRolls; i++) {
+            if (rolls[i] >= hp) {
+                return (nRolls - i) / nRolls;
             }
         }
     }
@@ -520,16 +526,16 @@ function computeKOChance(damage, hp, eot, hits, timesUsed, maxHP, toxicCounter) 
     }
     var sum = 0;
     var lastc = 0;
-    for (var i = 0; i < n; i++) {
+    for (var i = 0; i < nRolls; i++) {
         var c = void 0;
-        if (i === 0 || damage[i] !== damage[i - 1]) {
-            c = computeKOChance(damage, hp - damage[i] + eot - toxicDamage, eot, hits - 1, timesUsed, maxHP, toxicCounter);
+        if (i === 0 || rolls[i] !== rolls[i - 1]) {
+            c = computeKOChance(damageChances, hp - rolls[i] + eot - toxicDamage, eot, hits - 1, timesUsed, maxHP, toxicCounter);
         }
         else {
             c = lastc;
         }
         if (c === 1) {
-            sum += n - i;
+            sum += nRolls - i;
             break;
         }
         else {
@@ -537,7 +543,7 @@ function computeKOChance(damage, hp, eot, hits, timesUsed, maxHP, toxicCounter) 
         }
         lastc = c;
     }
-    return sum / n;
+    return sum / nRolls;
 }
 function predictTotal(damage, eot, hits, timesUsed, toxicCounter, maxHP) {
     var toxicDamage = 0;
@@ -555,117 +561,53 @@ function predictTotal(damage, eot, hits, timesUsed, toxicCounter, maxHP) {
     }
     return total;
 }
-function squashMultihit(gen, d, hits, err) {
-    if (err === void 0) { err = true; }
-    if (d.length === 1) {
-        return [d[0] * hits];
-    }
-    else if (gen.num === 1) {
-        var r = [];
-        for (var i = 0; i < d.length; i++) {
-            r[i] = d[i] * hits;
-        }
-        return r;
-    }
-    else if (d.length === 16) {
-        switch (hits) {
-            case 2:
-                return [
-                    2 * d[0], d[2] + d[3], d[4] + d[4], d[4] + d[5], d[5] + d[6], d[6] + d[6],
-                    d[6] + d[7], d[7] + d[7], d[8] + d[8], d[8] + d[9], d[9] + d[9], d[9] + d[10],
-                    d[10] + d[11], d[11] + d[11], d[12] + d[13], 2 * d[15],
-                ];
-            case 3:
-                return [
-                    3 * d[0], d[3] + d[3] + d[4], d[4] + d[4] + d[5], d[5] + d[5] + d[6],
-                    d[5] + d[6] + d[6], d[6] + d[6] + d[7], d[6] + d[7] + d[7], d[7] + d[7] + d[8],
-                    d[7] + d[8] + d[8], d[8] + d[8] + d[9], d[8] + d[9] + d[9], d[9] + d[9] + d[10],
-                    d[9] + d[10] + d[10], d[10] + d[11] + d[11], d[11] + d[12] + d[12], 3 * d[15],
-                ];
-            case 4:
-                return [
-                    4 * d[0], 4 * d[4], d[4] + d[5] + d[5] + d[5], d[5] + d[5] + d[6] + d[6],
-                    4 * d[6], d[6] + d[6] + d[7] + d[7], 4 * d[7], d[7] + d[7] + d[7] + d[8],
-                    d[7] + d[8] + d[8] + d[8], 4 * d[8], d[8] + d[8] + d[9] + d[9], 4 * d[9],
-                    d[9] + d[9] + d[10] + d[10], d[10] + d[10] + d[10] + d[11], 4 * d[11], 4 * d[15],
-                ];
-            case 5:
-                return [
-                    5 * d[0], d[4] + d[4] + d[4] + d[5] + d[5], d[5] + d[5] + d[5] + d[5] + d[6],
-                    d[5] + d[6] + d[6] + d[6] + d[6], d[6] + d[6] + d[6] + d[6] + d[7],
-                    d[6] + d[6] + d[7] + d[7] + d[7], 5 * d[7], d[7] + d[7] + d[7] + d[8] + d[8],
-                    d[7] + d[7] + d[8] + d[8] + d[8], 5 * d[8], d[8] + d[8] + d[8] + d[9] + d[9],
-                    d[8] + d[9] + d[9] + d[9] + d[9], d[9] + d[9] + d[9] + d[9] + d[10],
-                    d[9] + d[10] + d[10] + d[10] + d[10], d[10] + d[10] + d[11] + d[11] + d[11], 5 * d[15],
-                ];
-            case 10:
-                return [
-                    10 * d[0], 10 * d[4], 3 * d[4] + 7 * d[5], 5 * d[5] + 5 * d[6], 10 * d[6],
-                    5 * d[6] + 5 * d[7], 10 * d[7], 7 * d[7] + 3 * d[8], 3 * d[7] + 7 * d[8], 10 * d[8],
-                    5 * d[8] + 5 * d[9], 4 * d[9], 5 * d[9] + 5 * d[10], 7 * d[10] + 3 * d[11], 10 * d[11],
-                    10 * d[15],
-                ];
-            default:
-                (0, util_1.error)(err, "Unexpected # of hits: ".concat(hits));
-                return d;
+function getDamageRolls(d, count) {
+    var e_1, _a, e_2, _b;
+    if (count === void 0) { count = 16; }
+    var total = 0;
+    var allRolls = [];
+    var rolls = [];
+    try {
+        for (var _c = __values(Object.entries(d)), _d = _c.next(); !_d.done; _d = _c.next()) {
+            var _e = __read(_d.value, 2), valueString = _e[0], count_1 = _e[1];
+            total += count_1;
+            allRolls.push(+valueString);
         }
     }
-    else if (d.length === 39) {
-        switch (hits) {
-            case 2:
-                return [
-                    2 * d[0], 2 * d[7], 2 * d[10], 2 * d[12], 2 * d[14], d[15] + d[16],
-                    2 * d[17], d[18] + d[19], d[19] + d[20], 2 * d[21], d[22] + d[23],
-                    2 * d[24], 2 * d[26], 2 * d[28], 2 * d[31], 2 * d[38],
-                ];
-            case 3:
-                return [
-                    3 * d[0], 3 * d[9], 3 * d[12], 3 * d[13], 3 * d[15], 3 * d[16],
-                    3 * d[17], 3 * d[18], 3 * d[20], 3 * d[21], 3 * d[22], 3 * d[23],
-                    3 * d[25], 3 * d[26], 3 * d[29], 3 * d[38],
-                ];
-            case 4:
-                return [
-                    4 * d[0], 2 * d[10] + 2 * d[11], 4 * d[13], 4 * d[14], 2 * d[15] + 2 * d[16],
-                    2 * d[16] + 2 * d[17], 2 * d[17] + 2 * d[18], 2 * d[18] + 2 * d[19],
-                    2 * d[19] + 2 * d[20], 2 * d[20] + 2 * d[21], 2 * d[21] + 2 * d[22],
-                    2 * d[22] + 2 * d[23], 4 * d[24], 4 * d[25], 2 * d[27] + 2 * d[28], 4 * d[38],
-                ];
-            case 5:
-                return [
-                    5 * d[0], 5 * d[11], 5 * d[13], 5 * d[15], 5 * d[16], 5 * d[17],
-                    5 * d[18], 5 * d[19], 5 * d[19], 5 * d[20], 5 * d[21], 5 * d[22],
-                    5 * d[23], 5 * d[25], 5 * d[27], 5 * d[38],
-                ];
-            case 10:
-                return [
-                    10 * d[0], 10 * d[11], 10 * d[13], 10 * d[15], 10 * d[16], 10 * d[17],
-                    10 * d[18], 10 * d[19], 10 * d[19], 10 * d[20], 10 * d[21], 10 * d[22],
-                    10 * d[23], 10 * d[25], 10 * d[27], 10 * d[38],
-                ];
-            default:
-                (0, util_1.error)(err, "Unexpected # of hits: ".concat(hits));
-                return d;
+    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+    finally {
+        try {
+            if (_d && !_d.done && (_a = _c["return"])) _a.call(_c);
         }
+        finally { if (e_1) throw e_1.error; }
     }
-    else if (d.length === 256) {
-        if (hits > 1) {
-            (0, util_1.error)(err, "Unexpected # of hits for Parental Bond: ".concat(hits));
-        }
-        var r = [];
-        for (var i = 0; i < 16; i++) {
-            var val = 0;
-            for (var j = 0; j < 16; j++) {
-                val += d[i + j];
+    allRolls.sort();
+    var spacing = total / (count - 1);
+    rolls[0] = allRolls[0];
+    var cumulative = 0;
+    var currentIndex = 1;
+    try {
+        for (var allRolls_1 = __values(allRolls), allRolls_1_1 = allRolls_1.next(); !allRolls_1_1.done; allRolls_1_1 = allRolls_1.next()) {
+            var roll = allRolls_1_1.value;
+            cumulative += d[roll];
+            while (cumulative >= currentIndex * spacing) {
+                rolls.push(roll);
+                currentIndex += 1;
             }
-            r[i] = Math.round(val / 16);
+            if (currentIndex === (count - 1)) {
+                rolls.push(allRolls[allRolls.length - 1]);
+                break;
+            }
         }
-        return r;
     }
-    else {
-        (0, util_1.error)(err, "Unexpected # of possible damage values: ".concat(d.length));
-        return d;
+    catch (e_2_1) { e_2 = { error: e_2_1 }; }
+    finally {
+        try {
+            if (allRolls_1_1 && !allRolls_1_1.done && (_b = allRolls_1["return"])) _b.call(allRolls_1);
+        }
+        finally { if (e_2) throw e_2.error; }
     }
+    return { rolls: rolls, total: total };
 }
 function buildDescription(description, attacker, defender) {
     var _a = __read(getDescriptionLevels(attacker, defender), 2), attackerLevel = _a[0], defenderLevel = _a[1];
@@ -823,5 +765,17 @@ function appendIfSet(str, toAppend) {
 function toDisplay(notation, a, b, f) {
     if (f === void 0) { f = 1; }
     return notation === '%' ? Math.floor((a * (1000 / f)) / b) / 10 : Math.floor((a * (48 / f)) / b);
+}
+function formatChance(chance) {
+    var i;
+    for (i = 1; 1 - chance < Math.pow(10, -i); i++) { }
+    if (i > 2) {
+        return "1 in ~" + Math.round((chance) / (1 - chance)).toString() + " chance to NOT";
+    }
+    for (i = 1; chance < Math.pow(10, -i); i++) { }
+    if (i > 2) {
+        return "1 in ~" + Math.round((1 - chance) / (chance)).toString() + " chance to";
+    }
+    return (Math.round(chance * Math.pow(10, i + 3)) / Math.pow(10, i + 1)).toString() + "% chance to";
 }
 //# sourceMappingURL=desc.js.map

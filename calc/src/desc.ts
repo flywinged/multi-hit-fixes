@@ -2,7 +2,7 @@ import {Generation, Weather, Terrain, TypeName, ID} from './data/interface';
 import {Field, Side} from './field';
 import {Move} from './move';
 import {Pokemon} from './pokemon';
-import {Damage, damageRange} from './result';
+import {Damage, DamageChanceMap, addDamageChance, convolveDamageChance, damageRange, mergeDamageChances} from './result';
 import {error} from './util';
 // NOTE: This needs to come last to simplify bundling
 import {isGrounded} from './mechanics/util';
@@ -63,8 +63,8 @@ export function display(
   err = true
 ) {
   const [minDamage, maxDamage] = damageRange(damage);
-  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]) * move.hits;
-  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]) * move.hits;
+  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
+  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
 
   const minDisplay = toDisplay(notation, min, defender.maxHP());
   const maxDisplay = toDisplay(notation, max, defender.maxHP());
@@ -86,8 +86,8 @@ export function displayMove(
   notation = '%'
 ) {
   const [minDamage, maxDamage] = damageRange(damage);
-  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]) * move.hits;
-  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]) * move.hits;
+  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
+  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
 
   const minDisplay = toDisplay(notation, min, defender.maxHP());
   const maxDisplay = toDisplay(notation, max, defender.maxHP());
@@ -119,8 +119,8 @@ export function getRecovery(
   if (attacker.hasItem('Shell Bell') && !ignoresShellBell) {
     const max = Math.round(defender.maxHP() / 8);
     for (let i = 0; i < minD.length; i++) {
-      recovery[0] += Math.min(Math.round(minD[i] * move.hits / 8), max);
-      recovery[1] += Math.min(Math.round(maxD[i] * move.hits / 8), max);
+      recovery[0] += Math.min(Math.round(minD[i] / 8), max);
+      recovery[1] += Math.min(Math.round(maxD[i] / 8), max);
     }
   }
 
@@ -132,8 +132,8 @@ export function getRecovery(
     const percentHealed = move.drain[0] / move.drain[1];
     const max = Math.round(defender.maxHP() * percentHealed);
     for (let i = 0; i < minD.length; i++) {
-      recovery[0] += Math.min(Math.round(minD[i] * move.hits * percentHealed), max);
-      recovery[1] += Math.min(Math.round(maxD[i] * move.hits * percentHealed), max);
+      recovery[0] += Math.min(Math.round(minD[i] * percentHealed), max);
+      recovery[1] += Math.min(Math.round(maxD[i] * percentHealed), max);
     }
   }
 
@@ -156,8 +156,8 @@ export function getRecoil(
   notation = '%'
 ) {
   const [minDamage, maxDamage] = damageRange(damage);
-  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]) * move.hits;
-  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]) * move.hits;
+  const min = (typeof minDamage === 'number' ? minDamage : minDamage[0] + minDamage[1]);
+  const max = (typeof maxDamage === 'number' ? maxDamage : maxDamage[0] + maxDamage[1]);
 
   let recoil: [number, number] | number = [0, 0];
   let text = '';
@@ -245,19 +245,13 @@ export function getKOChance(
   defender: Pokemon,
   move: Move,
   field: Field,
-  damage: Damage,
+  damageInput: Damage,
   err = true
 ) {
-  damage = combine(damage);
-  if (isNaN(damage[0])) {
-    error(err, 'damage[0] must be a number.');
-    return {chance: 0, n: 0, text: ''};
-  }
-  if (damage[damage.length - 1] === 0) {
-    error(err, 'damage[damage.length - 1] === 0.');
-    return {chance: 0, n: 0, text: ''};
-  }
-
+  let {damageChances, accurate} = combine(damageInput);
+  let {rolls} = getDamageRolls(damageChances);
+  let damage = rolls
+  
   // Code doesn't really work if these aren't set.
   if (move.timesUsed === undefined) move.timesUsed = 1;
   if (move.timesUsedWithMetronome === undefined) move.timesUsedWithMetronome = 1;
@@ -274,9 +268,8 @@ export function getKOChance(
   // multi-hit moves have too many possibilities for brute-forcing to work, so reduce it
   // to an approximate distribution
   let qualifier = '';
-  if (move.hits > 1) {
-    qualifier = 'approx. ';
-    damage = squashMultihit(gen, damage, move.hits, err);
+  if (accurate === false) {
+    qualifier = "approx. "
   }
 
   const hazardsText = hazards.texts.length > 0
@@ -287,9 +280,12 @@ export function getKOChance(
       ? ' after ' + serializeText(hazards.texts.concat(eot.texts))
       : '';
 
+  // 
   if ((move.timesUsed === 1 && move.timesUsedWithMetronome === 1) || move.isZ) {
+
+    // This block computes OHKOs
     const chance = computeKOChance(
-      damage, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter
+      damageChances, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter
     );
     if (chance === 1) {
       return {chance, n: 1, text: `guaranteed OHKO${hazardsText}`}; // eot wasn't considered
@@ -298,22 +294,14 @@ export function getKOChance(
       return {
         chance,
         n: 1,
-        text: qualifier + Math.round(chance * 1000) / 10 + `% chance to OHKO${hazardsText}`,
+        text: qualifier + formatChance(chance) + ` OHKO${hazardsText}`,
       };
     }
 
-    // Parental Bond's combined first + second hit only is accurate for chance to OHKO, for
-    // multihit KOs its only approximated. We should be doing squashMultihit here instead of
-    // pretending we ar emore accurate than we are, but just throwing on an qualifer should be
-    // sufficient.
-    if (damage.length === 256) {
-      qualifier = 'approx. ';
-      // damage = squashMultihit(gen, damage, move.hits, err);
-    }
-
+    // This block computes 2-4HKOs
     for (let i = 2; i <= 4; i++) {
       const chance = computeKOChance(
-        damage, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter
+        damageChances, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter
       );
       if (chance === 1) {
         return {chance, n: i, text: `${qualifier || 'guaranteed '}${i}HKO${afterText}`};
@@ -321,11 +309,12 @@ export function getKOChance(
         return {
           chance,
           n: i,
-          text: qualifier + Math.round(chance * 1000) / 10 + `% chance to ${i}HKO${afterText}`,
+          text: qualifier + formatChance(chance) + ` ${i}HKO${afterText}`,
         };
       }
     }
 
+    // This block computes 5-9HKOs
     for (let i = 5; i <= 9; i++) {
       if (
         predictTotal(damage[0], eot.damage, i, 1, toxicCounter, defender.maxHP()) >=
@@ -341,7 +330,7 @@ export function getKOChance(
     }
   } else {
     const chance = computeKOChance(
-      damage, defender.maxHP() - hazards.damage,
+      damageChances, defender.maxHP() - hazards.damage,
       eot.damage,
       move.hits || 1,
       move.timesUsed || 1,
@@ -360,8 +349,8 @@ export function getKOChance(
         n: move.timesUsed,
         text:
           qualifier +
-          Math.round(chance * 1000) / 10 +
-          `% chance to ${move.timesUsed}HKO${afterText}`,
+          formatChance(chance) +
+          ` ${move.timesUsed}HKO${afterText}`,
       };
     }
 
@@ -402,27 +391,36 @@ export function getKOChance(
   return {chance: 0, n: 0, text: ''};
 }
 
-function combine(damage: Damage) {
+function combine(damage: Damage): {damageChances: DamageChanceMap, accurate: Boolean} {
+  let damageChances: DamageChanceMap = {}
+
   // Fixed Damage
-  if (typeof damage === 'number') return [damage];
+  if (typeof damage === 'number') {
+    damageChances[damage] = 16;
+    return {damageChances, accurate: true};
+  }
+
   // Standard Damage
-  if (damage.length > 2) {
-    if (damage[0] > damage[damage.length - 1]) damage = damage.slice().sort() as number[];
-    return damage as number[];
-  }
-  // Fixed Parental Bond Damage
-  if (typeof damage[0] === 'number' && typeof damage[1] === 'number') {
-    return [damage[0] + damage[1]];
-  }
-  // Parental Bond Damage
-  const d = damage as [number[], number[]];
-  const combined = [];
-  for (let i = 0; i < d[0].length; i++) { // eslint-disable-line
-    for (let j = 0; j < d[1].length; j++) { // eslint-disable-line
-      combined.push(d[0][i] + d[1][j]);
+  if (damage.length === 16) {
+    let d = damage as number[]
+    for (let i = 0; i < 16; i++) {
+      addDamageChance(damageChances, d[i])
     }
+    return {damageChances, accurate: true};
   }
-  return combined.sort();
+
+  // Multi-Hit Damage
+  const d = damage as number[][];
+  damageChances[0] = 1;
+  for (let i = 0; i < d.length; i++) {
+    let nextChances: DamageChanceMap = {};
+    for (let j = 0; j < 16; j++) {
+      mergeDamageChances(nextChances, convolveDamageChance(damageChances, d[i][j]))
+    }
+    damageChances = nextChances
+  }
+
+  return {damageChances, accurate: d.length <= 3};
 }
 
 const TRAPPING = [
@@ -651,7 +649,7 @@ function getEndOfTurn(
 }
 
 function computeKOChance(
-  damage: number[],
+  damageChances: DamageChanceMap,
   hp: number,
   eot: number,
   hits: number,
@@ -659,15 +657,21 @@ function computeKOChance(
   maxHP: number,
   toxicCounter: number
 ) {
-  const n = damage.length;
+
+  let nRolls = 4096
+  let {rolls} = getDamageRolls(damageChances, nRolls);
+
   if (hits === 1) {
-    for (let i = 0; i < n; i++) {
-      if (damage[n - 1] < hp) return 0;
-      if (damage[i] >= hp) {
-        return (n - i) / n;
+    if (rolls[nRolls - 1] < hp){
+      return 0;
+    }
+    for (let i = 0; i < nRolls; i++) { 
+      if (rolls[i] >= hp) {
+        return (nRolls - i) / nRolls;
       }
     }
   }
+
   let toxicDamage = 0;
   if (toxicCounter > 0) {
     toxicDamage = Math.floor((toxicCounter * maxHP) / 16);
@@ -675,12 +679,12 @@ function computeKOChance(
   }
   let sum = 0;
   let lastc = 0;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < nRolls; i++) {
     let c;
-    if (i === 0 || damage[i] !== damage[i - 1]) {
+    if (i === 0 || rolls[i] !== rolls[i - 1]) {
       c = computeKOChance(
-        damage,
-        hp - damage[i] + eot - toxicDamage,
+        damageChances,
+        hp - rolls[i] + eot - toxicDamage,
         eot,
         hits - 1,
         timesUsed,
@@ -691,14 +695,15 @@ function computeKOChance(
       c = lastc;
     }
     if (c === 1) {
-      sum += n - i;
+      sum += nRolls - i;
       break;
     } else {
       sum += c;
     }
     lastc = c;
   }
-  return sum / n;
+
+  return sum / nRolls;
 }
 
 function predictTotal(
@@ -724,112 +729,40 @@ function predictTotal(
   return total;
 }
 
-function squashMultihit(gen: Generation, d: number[], hits: number, err = true) {
-  if (d.length === 1) {
-    return [d[0] * hits];
-  } else if (gen.num === 1) {
-    const r = [];
-    for (let i = 0; i < d.length; i++) {
-      r[i] = d[i] * hits;
-    }
-    return r;
-  } else if (d.length === 16) {
-    switch (hits) {
-    case 2:
-      return [
-        2 * d[0], d[2] + d[3], d[4] + d[4], d[4] + d[5], d[5] + d[6], d[6] + d[6],
-        d[6] + d[7], d[7] + d[7], d[8] + d[8], d[8] + d[9], d[9] + d[9], d[9] + d[10],
-        d[10] + d[11], d[11] + d[11], d[12] + d[13], 2 * d[15],
-      ];
-    case 3:
-      return [
-        3 * d[0], d[3] + d[3] + d[4], d[4] + d[4] + d[5], d[5] + d[5] + d[6],
-        d[5] + d[6] + d[6], d[6] + d[6] + d[7], d[6] + d[7] + d[7], d[7] + d[7] + d[8],
-        d[7] + d[8] + d[8], d[8] + d[8] + d[9], d[8] + d[9] + d[9], d[9] + d[9] + d[10],
-        d[9] + d[10] + d[10], d[10] + d[11] + d[11], d[11] + d[12] + d[12], 3 * d[15],
-      ];
-    case 4:
-      return [
-        4 * d[0], 4 * d[4], d[4] + d[5] + d[5] + d[5], d[5] + d[5] + d[6] + d[6],
-        4 * d[6], d[6] + d[6] + d[7] + d[7], 4 * d[7], d[7] + d[7] + d[7] + d[8],
-        d[7] + d[8] + d[8] + d[8], 4 * d[8], d[8] + d[8] + d[9] + d[9], 4 * d[9],
-        d[9] + d[9] + d[10] + d[10], d[10] + d[10] + d[10] + d[11], 4 * d[11], 4 * d[15],
-      ];
-    case 5:
-      return [
-        5 * d[0], d[4] + d[4] + d[4] + d[5] + d[5], d[5] + d[5] + d[5] + d[5] + d[6],
-        d[5] + d[6] + d[6] + d[6] + d[6], d[6] + d[6] + d[6] + d[6] + d[7],
-        d[6] + d[6] + d[7] + d[7] + d[7], 5 * d[7], d[7] + d[7] + d[7] + d[8] + d[8],
-        d[7] + d[7] + d[8] + d[8] + d[8], 5 * d[8], d[8] + d[8] + d[8] + d[9] + d[9],
-        d[8] + d[9] + d[9] + d[9] + d[9], d[9] + d[9] + d[9] + d[9] + d[10],
-        d[9] + d[10] + d[10] + d[10] + d[10], d[10] + d[10] + d[11] + d[11] + d[11], 5 * d[15],
-      ];
-    case 10:
-      return [
-        10 * d[0], 10 * d[4], 3 * d[4] + 7 * d[5], 5 * d[5] + 5 * d[6], 10 * d[6],
-        5 * d[6] + 5 * d[7], 10 * d[7], 7 * d[7] + 3 * d[8], 3 * d[7] + 7 * d[8], 10 * d[8],
-        5 * d[8] + 5 * d[9], 4 * d[9], 5 * d[9] + 5 * d[10], 7 * d[10] + 3 * d[11], 10 * d[11],
-        10 * d[15],
-      ];
-    default:
-      error(err, `Unexpected # of hits: ${hits}`);
-      return d;
-    }
-  } else if (d.length === 39) {
-    switch (hits) {
-    case 2:
-      return [
-        2 * d[0], 2 * d[7], 2 * d[10], 2 * d[12], 2 * d[14], d[15] + d[16],
-        2 * d[17], d[18] + d[19], d[19] + d[20], 2 * d[21], d[22] + d[23],
-        2 * d[24], 2 * d[26], 2 * d[28], 2 * d[31], 2 * d[38],
-      ];
-    case 3:
-      return [
-        3 * d[0], 3 * d[9], 3 * d[12], 3 * d[13], 3 * d[15], 3 * d[16],
-        3 * d[17], 3 * d[18], 3 * d[20], 3 * d[21], 3 * d[22], 3 * d[23],
-        3 * d[25], 3 * d[26], 3 * d[29], 3 * d[38],
-      ];
-    case 4:
-      return [
-        4 * d[0], 2 * d[10] + 2 * d[11], 4 * d[13], 4 * d[14], 2 * d[15] + 2 * d[16],
-        2 * d[16] + 2 * d[17], 2 * d[17] + 2 * d[18], 2 * d[18] + 2 * d[19],
-        2 * d[19] + 2 * d[20], 2 * d[20] + 2 * d[21], 2 * d[21] + 2 * d[22],
-        2 * d[22] + 2 * d[23], 4 * d[24], 4 * d[25], 2 * d[27] + 2 * d[28], 4 * d[38],
-      ];
-    case 5:
-      return [
-        5 * d[0], 5 * d[11], 5 * d[13], 5 * d[15], 5 * d[16], 5 * d[17],
-        5 * d[18], 5 * d[19], 5 * d[19], 5 * d[20], 5 * d[21], 5 * d[22],
-        5 * d[23], 5 * d[25], 5 * d[27], 5 * d[38],
-      ];
-    case 10:
-      return [
-        10 * d[0], 10 * d[11], 10 * d[13], 10 * d[15], 10 * d[16], 10 * d[17],
-        10 * d[18], 10 * d[19], 10 * d[19], 10 * d[20], 10 * d[21], 10 * d[22],
-        10 * d[23], 10 * d[25], 10 * d[27], 10 * d[38],
-      ];
-    default:
-      error(err, `Unexpected # of hits: ${hits}`);
-      return d;
-    }
-  } else if (d.length === 256) {
-    if (hits > 1) {
-      error(err, `Unexpected # of hits for Parental Bond: ${hits}`);
-    }
-    // FIXME: Come up with a better Parental Bond approximation
-    const r: number[] = [];
-    for (let i = 0; i < 16; i++) {
-      let val = 0;
-      for (let j = 0; j < 16; j++) {
-        val += d[i + j];
-      }
-      r[i] = Math.round(val / 16);
-    }
-    return r;
-  } else {
-    error(err, `Unexpected # of possible damage values: ${d.length}`);
-    return d;
+function getDamageRolls(d: DamageChanceMap, count: number = 16) {
+
+  // Reduce damage map to a list of 16 approximate values spaced evenly apart
+  let total = 0;
+  let allRolls: number[] = [];
+  let rolls: number[] = [];
+  for (const [valueString, count] of Object.entries(d)) {
+    total += count;
+    allRolls.push(+valueString)
   }
+  allRolls.sort()
+
+  // Determine the approximate spacing needed between each of the 16 points
+  let spacing = total / (count - 1);
+  rolls[0] = allRolls[0];
+  let cumulative = 0;
+
+  let currentIndex = 1;
+  for (let roll of allRolls) {
+    cumulative += d[roll]
+    
+    while (cumulative >= currentIndex * spacing) {
+      rolls.push(roll)
+      currentIndex += 1
+    }
+
+    if (currentIndex === (count - 1)) {
+      rolls.push(allRolls[allRolls.length - 1])
+      break;
+    }
+  }
+
+  return {rolls, total};
+ 
 }
 
 function buildDescription(description: RawDesc, attacker: Pokemon, defender: Pokemon) {
@@ -986,4 +919,21 @@ function appendIfSet(str: string, toAppend?: string) {
 
 function toDisplay(notation: string, a: number, b: number, f = 1) {
   return notation === '%' ? Math.floor((a * (1000 / f)) / b) / 10 : Math.floor((a * (48 / f)) / b);
+}
+
+function formatChance(chance: number): string {
+  let i;
+  for (i = 1; 1 - chance < Math.pow(10, -i); i++) {}
+
+  if (i > 2) {
+    return "1 in ~" + Math.round((chance) / (1-chance)).toString() + " chance to NOT"
+  }
+
+  for (i = 1; chance < Math.pow(10, -i); i++) {}
+
+  if (i > 2) {
+    return "1 in ~" + Math.round((1-chance) / (chance)).toString() + " chance to"
+  }
+
+  return (Math.round(chance * Math.pow(10, i+3)) / Math.pow(10, i+1)).toString() + "% chance to"
 }

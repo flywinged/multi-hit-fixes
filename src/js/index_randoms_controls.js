@@ -188,24 +188,106 @@ $(".result-move").change(function () {
 		var result = findDamageResult($(this));
 		if (result) {
 			var desc = result.fullDesc(notation, false);
+			var damageHitsString = displayDamageHits(result.damage);
 			if (desc.indexOf('--') === -1) desc += ' -- possibly the worst move ever';
 			$("#mainResult").text(desc);
-			$("#damageValues").text("Possible damage amounts: (" + displayDamageHits(result.damage) + ")");
+			$("#damageValues").text(damageHitsString);
 		}
 	}
 });
 
 function displayDamageHits(damage) {
+
 	// Fixed Damage
-	if (typeof damage === 'number') return damage;
-	// Standard Damage
-	if (damage.length > 2) return damage.join(', ');
-	// Fixed Parental Bond Damage
-	if (typeof damage[0] === 'number' && typeof damage[1] === 'number') {
-		return '1st Hit: ' + damage[0] + '; 2nd Hit: ' + damage[1];
+	if (typeof damage === 'number') {
+		return "Possible damage amounts: (" + damage.toString() + ")";
 	}
-	// Parental Bond Damage
-	return '1st Hit: ' + damage[0].join(', ') + '; 2nd Hit: ' + damage[1].join(', ');
+
+	// Standard Damage
+	if (damage.length === 16) {
+		return "Possible damage amounts: (" + damage.join(', ') + ")";
+	}
+
+	var chances = {0: 1};
+	var allRolls = [];
+	for (var i = 0; i < damage.length; i++) {
+		allRolls = [];
+		var newChances = {};
+		for (var j = 0; j < 16; j++) {
+			var roll = damage[i][j];
+			Object.keys(chances).forEach(function (existingdamage) {
+				var weight = chances[Number(existingdamage)];
+				var total = roll + Number(existingdamage);
+				if (newChances[total] === undefined) {
+					newChances[total] = weight;
+					allRolls.push(total);
+				} else {
+					newChances[total] += weight;
+				}
+			});
+		}
+		chances = newChances;
+	}
+
+	allRolls.sort();
+	var rolls = [allRolls[0]];
+
+	var spacing = (Math.pow(16, damage.length)) / 15;
+	rolls[0] = allRolls[0];
+	var cumulative = 0;
+
+	var addedRolls = 1;
+	for (var i = 1; i < allRolls.length; i++) {
+		var roll = allRolls[i];
+		cumulative += chances[roll];
+
+		while (cumulative >= addedRolls * spacing) {
+			rolls.push(roll);
+			addedRolls += 1;
+		}
+
+		if (addedRolls === 15) {
+			rolls.push(allRolls[allRolls.length - 1]);
+			break;
+		}
+	}
+
+	var returnString = "Approximate damage distribution: (" + rolls.join(', ') + ")";
+
+	// Determine which hits are actually different.
+	var differentHits = [damage[0]];
+	for (var i = 1; i < damage.length; i++) {
+		var shouldAdd = true;
+
+		for (var j = 0; j < differentHits.length; j++) {
+			var same = true;
+			for (var k = 0; k < 16; k++) {
+				if (damage[i][k] !== differentHits[j][k]) {
+					same = false;
+				}
+			}
+			if (same) {
+				shouldAdd = false;
+				break;
+			}
+		}
+
+		if (shouldAdd) {
+			differentHits.push(damage[i]);
+		}
+
+	}
+
+	if (differentHits.length === 1) {
+		returnString += "\nPossible damage amounts for each hit: (" + differentHits[0] + ")";
+		return returnString;
+	}
+
+	for (var i = 0; i < differentHits.length; i++) {
+		returnString += "\nPossible damage amounts for hit " + (i + 1) + ": (" + differentHits[i] + ")";
+	}
+
+	return returnString;
 }
 
 function findDamageResult(resultMoveObj) {
