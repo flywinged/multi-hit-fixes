@@ -3,7 +3,7 @@ import { Generation } from './data/interface';
 import { Field } from './field';
 import { Move } from './move';
 import { Pokemon } from './pokemon';
-export type Damage = number | number[] | [number, number] | number[][];
+export type Damage = number | number[] | number[][];
 export type DamageRollWeightMap = number[];
 export declare class Result {
     gen: Generation;
