@@ -24,17 +24,6 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
-var __values = (this && this.__values) || function(o) {
-    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
-    if (m) return m.call(o);
-    if (o && typeof o.length === "number") return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
-        }
-    };
-    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
-};
 exports.__esModule = true;
 
 var desc_1 = require("./desc");
@@ -108,41 +97,17 @@ function addDamageChance(damageChances, damage, count) {
 }
 exports.addDamageChance = addDamageChance;
 function convolveDamageChance(damageChances, damage) {
-    var e_1, _a;
-    var newDamageChances = {};
-    try {
-        for (var _b = __values(Object.entries(damageChances)), _c = _b.next(); !_c.done; _c = _b.next()) {
-            var _d = __read(_c.value, 2), stringValue = _d[0], chance = _d[1];
-            var value = +stringValue;
-            addDamageChance(newDamageChances, value + damage, chance);
-        }
-    }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
-        try {
-            if (_c && !_c.done && (_a = _b["return"])) _a.call(_b);
-        }
-        finally { if (e_1) throw e_1.error; }
-    }
+    var newDamageChances = [];
+    damageChances.forEach(function (damageRoll, weight) {
+        addDamageChance(newDamageChances, damageRoll + damage, weight);
+    });
     return newDamageChances;
 }
 exports.convolveDamageChance = convolveDamageChance;
 function mergeDamageChances(d1, d2) {
-    var e_2, _a;
-    try {
-        for (var _b = __values(Object.entries(d2)), _c = _b.next(); !_c.done; _c = _b.next()) {
-            var _d = __read(_c.value, 2), stringValue = _d[0], chance = _d[1];
-            var value = +stringValue;
-            addDamageChance(d1, value, chance);
-        }
-    }
-    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-    finally {
-        try {
-            if (_c && !_c.done && (_a = _b["return"])) _a.call(_b);
-        }
-        finally { if (e_2) throw e_2.error; }
-    }
+    d2.forEach(function (damageRoll, weight) {
+        addDamageChance(d1, damageRoll, weight);
+    });
 }
 exports.mergeDamageChances = mergeDamageChances;
 //# sourceMappingURL=result.js.map
