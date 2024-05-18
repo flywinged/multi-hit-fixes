@@ -252,6 +252,15 @@ function displayDamageHits(damage) {
 		}
 	}
 
+	while (addedRolls < 15) {
+		rolls.push(rolls[rolls.length - 1]);
+		addedRolls += 1;
+	}
+
+	if (rolls.length == 15) {
+		rolls.push(allRolls[allRolls.length - 1]);
+	}
+
 	var returnString = "Approximate damage distribution: (" + rolls.join(', ') + ")";
 
 	// Determine which hits are actually different.
