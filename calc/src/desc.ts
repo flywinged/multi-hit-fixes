@@ -921,13 +921,13 @@ function formatChance(chance: number): string {
   for (i = 1;1 - chance < Math.pow(10, -i);i++) { }
 
   if (i > 2) {
-    return "1 in ~" + (1 + Math.round((chance) / (1 - chance))).toString() + " chance to NOT";
+    return "1 in " + (1 + Math.round((chance) / (1 - chance))).toString() + " chance to NOT";
   }
 
   for (i = 1;chance < Math.pow(10, -i);i++) { }
 
   if (i > 2) {
-    return "1 in ~" + (1 + Math.round((1 - chance) / (chance))).toString() + " chance to";
+    return "1 in " + (1 + Math.round((1 - chance) / (chance))).toString() + " chance to";
   }
 
   return (Math.round(chance * Math.pow(10, i + 3)) / Math.pow(10, i + 1)).toString() + "% chance to";
