@@ -1,11 +1,11 @@
-import {RawDesc, display, displayMove, getRecovery, getRecoil, getKOChance} from './desc';
-import {Generation} from './data/interface';
-import {Field} from './field';
-import {Move} from './move';
-import {Pokemon} from './pokemon';
+import { RawDesc, display, displayMove, getRecovery, getRecoil, getKOChance } from './desc';
+import { Generation } from './data/interface';
+import { Field } from './field';
+import { Move } from './move';
+import { Pokemon } from './pokemon';
 
 export type Damage = number | number[] | number[][];
-export type DamageRollWeightMap = number[]
+export type DamageRollWeightMap = number[];
 
 export class Result {
   gen: Generation;
@@ -94,15 +94,15 @@ export function damageRange(
     return [d[0], d[d.length - 1]];
   }
 
-  const d = damage as number[][]
+  const d = damage as number[][];
   let totalMinimums = 0;
   let totalMaximums = 0;
-  for (let i = 0; i < d.length; i++) {
+  for (let i = 0;i < d.length;i++) {
     totalMinimums += d[i][0];
     totalMaximums += d[i][15];
   }
 
-  return [totalMinimums, totalMaximums]
+  return [totalMinimums, totalMaximums];
 }
 
 export function addDamageWeight(damageWeights: DamageRollWeightMap, damage: number, count: number = 1) {
@@ -115,17 +115,17 @@ export function addDamageWeight(damageWeights: DamageRollWeightMap, damage: numb
 
 export function convolveDamageWeight(damageWeights: DamageRollWeightMap, damage: number): DamageRollWeightMap {
 
-  let newDamageWeights: DamageRollWeightMap = []
+  let newDamageWeights: DamageRollWeightMap = [];
 
   damageWeights.forEach((weight, damageRoll) => {
-    addDamageWeight(newDamageWeights, damageRoll + damage, weight)
-  })
+    addDamageWeight(newDamageWeights, damageRoll + damage, weight);
+  });
 
-  return newDamageWeights
+  return newDamageWeights;
 }
 
 export function mergeDamageWeights(d1: DamageRollWeightMap, d2: DamageRollWeightMap) {
   d2.forEach((weight, damageRoll) => {
-    addDamageWeight(d1, damageRoll, weight)
-  })
+    addDamageWeight(d1, damageRoll, weight);
+  });
 }

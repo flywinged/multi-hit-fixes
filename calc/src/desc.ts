@@ -1,11 +1,11 @@
-import {Generation, Weather, Terrain, TypeName, ID} from './data/interface';
-import {Field, Side} from './field';
-import {Move} from './move';
-import {Pokemon} from './pokemon';
-import {Damage, DamageRollWeightMap, addDamageWeight, convolveDamageWeight, damageRange, mergeDamageWeights} from './result';
-import {error} from './util';
+import { Generation, Weather, Terrain, TypeName, ID } from './data/interface';
+import { Field, Side } from './field';
+import { Move } from './move';
+import { Pokemon } from './pokemon';
+import { Damage, DamageRollWeightMap, addDamageWeight, convolveDamageWeight, damageRange, mergeDamageWeights } from './result';
+import { error } from './util';
 // NOTE: This needs to come last to simplify bundling
-import {isGrounded} from './mechanics/util';
+import { isGrounded } from './mechanics/util';
 
 export interface RawDesc {
   HPEVs?: string;
@@ -118,7 +118,7 @@ export function getRecovery(
     gen.num === 3 && move.named('Doom Desire', 'Future Sight');
   if (attacker.hasItem('Shell Bell') && !ignoresShellBell) {
     const max = Math.round(defender.maxHP() / 8);
-    for (let i = 0; i < minD.length; i++) {
+    for (let i = 0;i < minD.length;i++) {
       recovery[0] += Math.min(Math.round(minD[i] / 8), max);
       recovery[1] += Math.min(Math.round(maxD[i] / 8), max);
     }
@@ -131,19 +131,19 @@ export function getRecovery(
   if (move.drain) {
     const percentHealed = move.drain[0] / move.drain[1];
     const max = Math.round(defender.maxHP() * percentHealed);
-    for (let i = 0; i < minD.length; i++) {
+    for (let i = 0;i < minD.length;i++) {
       recovery[0] += Math.min(Math.round(minD[i] * percentHealed), max);
       recovery[1] += Math.min(Math.round(maxD[i] * percentHealed), max);
     }
   }
 
-  if (recovery[1] === 0) return {recovery, text};
+  if (recovery[1] === 0) return { recovery, text };
 
   const minHealthRecovered = toDisplay(notation, recovery[0], attacker.maxHP());
   const maxHealthRecovered = toDisplay(notation, recovery[1], attacker.maxHP());
 
   text = `${minHealthRecovered} - ${maxHealthRecovered}${notation} recovered`;
-  return {recovery, text};
+  return { recovery, text };
 }
 
 // TODO: return recoil damage as exact HP
@@ -203,27 +203,27 @@ export function getRecoil(
 
     recoil = [minRecoilDamage, maxRecoilDamage];
     switch (gen.num) {
-    case 1:
-      recoil = toDisplay(notation, 1, attacker.maxHP());
-      text = '1hp damage on miss';
-      break;
-    case 2: case 3: case 4:
-      if (defender.hasType('Ghost')) {
-        if (gen.num === 4) {
-          const gen4CrashDamage = Math.floor(((defender.maxHP() * 0.5) / attacker.maxHP()) * 100);
-          recoil = notation === '%' ? gen4CrashDamage : Math.floor((gen4CrashDamage / 100) * 48);
-          text = `${gen4CrashDamage}% crash damage`;
+      case 1:
+        recoil = toDisplay(notation, 1, attacker.maxHP());
+        text = '1hp damage on miss';
+        break;
+      case 2: case 3: case 4:
+        if (defender.hasType('Ghost')) {
+          if (gen.num === 4) {
+            const gen4CrashDamage = Math.floor(((defender.maxHP() * 0.5) / attacker.maxHP()) * 100);
+            recoil = notation === '%' ? gen4CrashDamage : Math.floor((gen4CrashDamage / 100) * 48);
+            text = `${gen4CrashDamage}% crash damage`;
+          } else {
+            recoil = 0;
+            text = 'no crash damage on Ghost types';
+          }
         } else {
-          recoil = 0;
-          text = 'no crash damage on Ghost types';
+          text = `${minRecoilDamage} - ${maxRecoilDamage}${notation} crash damage on miss`;
         }
-      } else {
-        text = `${minRecoilDamage} - ${maxRecoilDamage}${notation} crash damage on miss`;
-      }
-      break;
-    default:
-      recoil = notation === '%' ? 24 : 50;
-      text = '50% crash damage';
+        break;
+      default:
+        recoil = notation === '%' ? 24 : 50;
+        text = '50% crash damage';
     }
   } else if (move.struggleRecoil) {
     recoil = notation === '%' ? 12 : 25;
@@ -236,7 +236,7 @@ export function getRecoil(
     text = '50% recoil damage';
   }
 
-  return {recoil, text};
+  return { recoil, text };
 }
 
 export function getKOChance(
@@ -251,26 +251,26 @@ export function getKOChance(
   let combineResult = combine(damageInput);
   let damageWeights = combineResult.damageWeights;
   let rolls = getDamageRolls(damageWeights);
-  let damage = rolls
-  
+  let damage = rolls;
+
   // Code doesn't really work if these aren't set.
   if (move.timesUsed === undefined) move.timesUsed = 1;
   if (move.timesUsedWithMetronome === undefined) move.timesUsedWithMetronome = 1;
 
   if (damage[0] >= defender.maxHP() && move.timesUsed === 1 && move.timesUsedWithMetronome === 1) {
-    return {chance: 1, n: 1, text: 'guaranteed OHKO'};
+    return { chance: 1, n: 1, text: 'guaranteed OHKO' };
   }
 
   const hazards = getHazards(gen, defender, field.defenderSide);
   const eot = getEndOfTurn(gen, attacker, defender, move, field);
   const toxicCounter =
-     defender.hasStatus('tox') && !defender.hasAbility('Magic Guard') ? defender.toxicCounter : 0;
+    defender.hasStatus('tox') && !defender.hasAbility('Magic Guard') ? defender.toxicCounter : 0;
 
   // multi-hit moves have too many possibilities for brute-forcing to work, so reduce it
   // to an approximate distribution
   let qualifier = '';
   if (combineResult.accurate === false) {
-    qualifier = "approx. "
+    qualifier = "approx. ";
   }
 
   const hazardsText = hazards.texts.length > 0
@@ -289,7 +289,7 @@ export function getKOChance(
       damageWeights, defender.curHP() - hazards.damage, 0, 1, 1, defender.maxHP(), toxicCounter
     );
     if (chance === 1) {
-      return {chance, n: 1, text: `guaranteed OHKO${hazardsText}`}; // eot wasn't considered
+      return { chance, n: 1, text: `guaranteed OHKO${hazardsText}` }; // eot wasn't considered
     } else if (chance > 0) {
       // note: still not accounting for EOT due to poor eot damage handling
       return {
@@ -300,12 +300,12 @@ export function getKOChance(
     }
 
     // This block computes 2-4HKOs
-    for (let i = 2; i <= 4; i++) {
+    for (let i = 2;i <= 4;i++) {
       const chance = computeKOChance(
         damageWeights, defender.curHP() - hazards.damage, eot.damage, i, 1, defender.maxHP(), toxicCounter
       );
       if (chance === 1) {
-        return {chance, n: i, text: `${qualifier || 'guaranteed '}${i}HKO${afterText}`};
+        return { chance, n: i, text: `${qualifier || 'guaranteed '}${i}HKO${afterText}` };
       } else if (chance > 0) {
         return {
           chance,
@@ -316,17 +316,17 @@ export function getKOChance(
     }
 
     // This block computes 5-9HKOs
-    for (let i = 5; i <= 9; i++) {
+    for (let i = 5;i <= 9;i++) {
       if (
         predictTotal(damage[0], eot.damage, i, 1, toxicCounter, defender.maxHP()) >=
         defender.curHP() - hazards.damage
       ) {
-        return {chance: 1, n: i, text: `${qualifier || 'guaranteed '}${i}HKO${afterText}`};
+        return { chance: 1, n: i, text: `${qualifier || 'guaranteed '}${i}HKO${afterText}` };
       } else if (
         predictTotal(damage[damage.length - 1], eot.damage, i, 1, toxicCounter, defender.maxHP()) >=
         defender.curHP() - hazards.damage
       ) {
-        return {n: i, text: qualifier + `possible ${i}HKO${afterText}`};
+        return { n: i, text: qualifier + `possible ${i}HKO${afterText}` };
       }
     }
   } else {
@@ -386,42 +386,42 @@ export function getKOChance(
         text: qualifier + `possible KO in ${move.timesUsed} turns${afterText}`,
       };
     }
-    return {n: move.timesUsed, text: qualifier + 'not a KO'};
+    return { n: move.timesUsed, text: qualifier + 'not a KO' };
   }
 
-  return {chance: 0, n: 0, text: ''};
+  return { chance: 0, n: 0, text: '' };
 }
 
-function combine(damage: Damage): {damageWeights: DamageRollWeightMap, accurate: Boolean} {
-  let damageWeights: DamageRollWeightMap = []
+function combine(damage: Damage): { damageWeights: DamageRollWeightMap, accurate: Boolean; } {
+  let damageWeights: DamageRollWeightMap = [];
 
   // Fixed Damage
   if (typeof damage === 'number') {
     damageWeights[damage] = 16;
-    return {damageWeights, accurate: true};
+    return { damageWeights, accurate: true };
   }
 
   // Standard Damage
   if (damage.length === 16) {
-    let d = damage as number[]
-    for (let i = 0; i < 16; i++) {
-      addDamageWeight(damageWeights, d[i])
+    let d = damage as number[];
+    for (let i = 0;i < 16;i++) {
+      addDamageWeight(damageWeights, d[i]);
     }
-    return {damageWeights, accurate: true};
+    return { damageWeights, accurate: true };
   }
 
   // Multi-Hit Damage
   const d = damage as number[][];
   damageWeights[0] = 1;
-  for (let i = 0; i < d.length; i++) {
+  for (let i = 0;i < d.length;i++) {
     let nextWeights: DamageRollWeightMap = [];
-    for (let j = 0; j < 16; j++) {
-      mergeDamageWeights(nextWeights, convolveDamageWeight(damageWeights, d[i][j]))
+    for (let j = 0;j < 16;j++) {
+      mergeDamageWeights(nextWeights, convolveDamageWeight(damageWeights, d[i][j]));
     }
-    damageWeights = nextWeights
+    damageWeights = nextWeights;
   }
 
-  return {damageWeights, accurate: d.length <= 3};
+  return { damageWeights, accurate: d.length <= 3 };
 }
 
 const TRAPPING = [
@@ -434,7 +434,7 @@ function getHazards(gen: Generation, defender: Pokemon, defenderSide: Side) {
   const texts: string[] = [];
 
   if (defender.hasItem('Heavy-Duty Boots')) {
-    return {damage, texts};
+    return { damage, texts };
   }
   if (defenderSide.isSR && !defender.hasAbility('Magic Guard', 'Mountaineer')) {
     const rockType = gen.types.get('rock' as ID)!;
@@ -454,8 +454,8 @@ function getHazards(gen: Generation, defender: Pokemon, defenderSide: Side) {
   }
 
   if (!defender.hasType('Flying') &&
-      !defender.hasAbility('Magic Guard', 'Levitate') &&
-      !defender.hasItem('Air Balloon')
+    !defender.hasAbility('Magic Guard', 'Levitate') &&
+    !defender.hasItem('Air Balloon')
   ) {
     if (defenderSide.spikes === 1) {
       damage += Math.floor(defender.maxHP() / 8);
@@ -477,7 +477,7 @@ function getHazards(gen: Generation, defender: Pokemon, defenderSide: Side) {
     damage = 0;
   }
 
-  return {damage, texts};
+  return { damage, texts };
 }
 
 function getEndOfTurn(
@@ -617,36 +617,36 @@ function getEndOfTurn(
     texts.push('Salt Cure');
   }
   if (!defender.hasType('Fire') && !defender.hasAbility('Magic Guard') &&
-      (move.named('Fire Pledge (Grass Pledge Boosted)', 'Grass Pledge (Fire Pledge Boosted)'))) {
+    (move.named('Fire Pledge (Grass Pledge Boosted)', 'Grass Pledge (Fire Pledge Boosted)'))) {
     damage -= Math.floor(defender.maxHP() / 8);
     texts.push('Sea of Fire damage');
   }
 
   if (!defender.hasAbility('Magic Guard') && !defender.hasType('Grass') &&
-      (field.defenderSide.vinelash || move.named('G-Max Vine Lash'))) {
+    (field.defenderSide.vinelash || move.named('G-Max Vine Lash'))) {
     damage -= Math.floor(defender.maxHP() / 6);
     texts.push('Vine Lash damage');
   }
 
   if (!defender.hasAbility('Magic Guard') && !defender.hasType('Fire') &&
-      (field.defenderSide.wildfire || move.named('G-Max Wildfire'))) {
+    (field.defenderSide.wildfire || move.named('G-Max Wildfire'))) {
     damage -= Math.floor(defender.maxHP() / 6);
     texts.push('Wildfire damage');
   }
 
   if (!defender.hasAbility('Magic Guard') && !defender.hasType('Water') &&
-      (field.defenderSide.cannonade || move.named('G-Max Cannonade'))) {
+    (field.defenderSide.cannonade || move.named('G-Max Cannonade'))) {
     damage -= Math.floor(defender.maxHP() / 6);
     texts.push('Cannonade damage');
   }
 
   if (!defender.hasAbility('Magic Guard') && !defender.hasType('Rock') &&
-      (field.defenderSide.volcalith || move.named('G-Max Volcalith'))) {
+    (field.defenderSide.volcalith || move.named('G-Max Volcalith'))) {
     damage -= Math.floor(defender.maxHP() / 6);
     texts.push('Volcalith damage');
   }
 
-  return {damage, texts};
+  return { damage, texts };
 }
 
 function computeKOChance(
@@ -659,14 +659,14 @@ function computeKOChance(
   toxicCounter: number
 ) {
 
-  let nRolls = 4096
+  let nRolls = 4096;
   let rolls = getDamageRolls(damageWeights, nRolls);
 
   if (hits === 1) {
-    if (rolls[nRolls - 1] < hp){
+    if (rolls[nRolls - 1] < hp) {
       return 0;
     }
-    for (let i = 0; i < nRolls; i++) { 
+    for (let i = 0;i < nRolls;i++) {
       if (rolls[i] >= hp) {
         return (nRolls - i) / nRolls;
       }
@@ -680,7 +680,7 @@ function computeKOChance(
   }
   let sum = 0;
   let lastc = 0;
-  for (let i = 0; i < nRolls; i++) {
+  for (let i = 0;i < nRolls;i++) {
     let c;
     if (i === 0 || rolls[i] !== rolls[i - 1]) {
       c = computeKOChance(
@@ -717,7 +717,7 @@ function predictTotal(
 ) {
   let toxicDamage = 0;
   if (toxicCounter > 0) {
-    for (let i = 0; i < hits - 1; i++) {
+    for (let i = 0;i < hits - 1;i++) {
       toxicDamage += Math.floor(((toxicCounter + i) * maxHP) / 16);
     }
   }
@@ -737,10 +737,10 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
   let allRolls: number[] = [];
   let rolls: number[] = [];
   d.forEach((weight, damageRoll) => {
-    total += weight
-    allRolls.push(damageRoll)
-  })
-  allRolls.sort()
+    total += weight;
+    allRolls.push(damageRoll);
+  });
+  allRolls.sort();
 
   // Determine the approximate spacing needed between each of the 16 points
   let spacing = total / (count - 1);
@@ -755,15 +755,15 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
 
     cumulative += d[roll];
     while (cumulative >= currentIndex * spacing) {
-      rolls.push(roll)
-      currentIndex += 1
+      rolls.push(roll);
+      currentIndex += 1;
     }
 
-  })
+  });
 
   rolls.push(allRolls[allRolls.length - 1]);
   return rolls;
- 
+
 }
 
 function buildDescription(description: RawDesc, attacker: Pokemon, defender: Pokemon) {
@@ -907,7 +907,7 @@ function serializeText(arr: string[]) {
     return arr[0] + ' and ' + arr[1];
   } else {
     let text = '';
-    for (let i = 0; i < arr.length - 1; i++) {
+    for (let i = 0;i < arr.length - 1;i++) {
       text += arr[i] + ', ';
     }
     return text + 'and ' + arr[arr.length - 1];
@@ -924,17 +924,17 @@ function toDisplay(notation: string, a: number, b: number, f = 1) {
 
 function formatChance(chance: number): string {
   let i;
-  for (i = 1; 1 - chance < Math.pow(10, -i); i++) {}
+  for (i = 1;1 - chance < Math.pow(10, -i);i++) { }
 
   if (i > 2) {
-    return "1 in ~" + Math.round((chance) / (1-chance)).toString() + " chance to NOT"
+    return "1 in ~" + Math.round((chance) / (1 - chance)).toString() + " chance to NOT";
   }
 
-  for (i = 1; chance < Math.pow(10, -i); i++) {}
+  for (i = 1;chance < Math.pow(10, -i);i++) { }
 
   if (i > 2) {
-    return "1 in ~" + Math.round((1-chance) / (chance)).toString() + " chance to"
+    return "1 in ~" + Math.round((1 - chance) / (chance)).toString() + " chance to";
   }
 
-  return (Math.round(chance * Math.pow(10, i+3)) / Math.pow(10, i+1)).toString() + "% chance to"
+  return (Math.round(chance * Math.pow(10, i + 3)) / Math.pow(10, i + 1)).toString() + "% chance to";
 }
