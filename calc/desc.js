@@ -575,6 +575,13 @@ function getDamageRolls(d, count) {
             currentIndex += 1;
         }
     });
+    while (currentIndex < 15) {
+        rolls.push(rolls[rolls.length - 1]);
+        currentIndex += 1;
+    }
+    if (allRolls.length == 15) {
+        allRolls.push(allRolls[allRolls.length - 1]);
+    }
     rolls.push(allRolls[allRolls.length - 1]);
     return rolls;
 }
