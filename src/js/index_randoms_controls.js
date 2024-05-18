@@ -235,31 +235,14 @@ function displayDamageHits(damage) {
 	var spacing = (Math.pow(16, damage.length)) / 16;
 	var cumulative = 0;
 
-	console.log(spacing, allRolls, weights);
-
 	var addedRolls = 0;
 	for (var i = 0; i < allRolls.length; i++) {
 		var roll = allRolls[i];
 		cumulative += weights[roll];
-
-		while (cumulative >= addedRolls * spacing) {
+		while ((cumulative > addedRolls * spacing) && (addedRolls < 16)) {
 			rolls.push(roll);
 			addedRolls += 1;
 		}
-
-		if (addedRolls === 15) {
-			rolls.push(allRolls[allRolls.length - 1]);
-			break;
-		}
-	}
-
-	while (addedRolls < 15) {
-		rolls.push(rolls[rolls.length - 1]);
-		addedRolls += 1;
-	}
-
-	if (rolls.length == 15) {
-		rolls.push(allRolls[allRolls.length - 1]);
 	}
 
 	var returnString = "Approximate damage distribution: (" + rolls.join(', ') + ")";

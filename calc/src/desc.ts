@@ -748,28 +748,14 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
 
   let currentIndex = 0;
   allRolls.forEach(roll => {
-    if (currentIndex === count - 1) {
-      return;
-    }
-
     cumulative += d[roll];
-    while (cumulative >= currentIndex * spacing) {
+    while ((cumulative > currentIndex * spacing) && (currentIndex < count)) {
       rolls.push(roll);
       currentIndex += 1;
     }
 
   });
 
-  while (currentIndex < 15) {
-		rolls.push(rolls[rolls.length - 1]);
-		currentIndex += 1;
-	}
-
-	if (allRolls.length == 15) {
-		allRolls.push(allRolls[allRolls.length - 1]);
-	}
-
-  rolls.push(allRolls[allRolls.length - 1]);
   return rolls;
 
 }
