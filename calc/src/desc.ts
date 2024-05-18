@@ -743,11 +743,10 @@ function getDamageRolls(d: DamageRollWeightMap, count: number = 16) {
   allRolls.sort();
 
   // Determine the approximate spacing needed between each of the 16 points
-  let spacing = total / (count - 1);
-  rolls[0] = allRolls[0];
+  let spacing = total / count;
   let cumulative = 0;
 
-  let currentIndex = 1;
+  let currentIndex = 0;
   allRolls.forEach(roll => {
     if (currentIndex === count - 1) {
       return;

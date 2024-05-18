@@ -230,14 +230,15 @@ function displayDamageHits(damage) {
 	}
 
 	allRolls.sort();
-	var rolls = [allRolls[0]];
+	var rolls = [];
 
-	var spacing = (Math.pow(16, damage.length)) / 15;
-	rolls[0] = allRolls[0];
+	var spacing = (Math.pow(16, damage.length)) / 16;
 	var cumulative = 0;
 
-	var addedRolls = 1;
-	for (var i = 1; i < allRolls.length; i++) {
+	console.log(spacing, allRolls, weights);
+
+	var addedRolls = 0;
+	for (var i = 0; i < allRolls.length; i++) {
 		var roll = allRolls[i];
 		cumulative += weights[roll];
 

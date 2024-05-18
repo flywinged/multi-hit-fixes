@@ -561,10 +561,9 @@ function getDamageRolls(d, count) {
         allRolls.push(damageRoll);
     });
     allRolls.sort();
-    var spacing = total / (count - 1);
-    rolls[0] = allRolls[0];
+    var spacing = total / count;
     var cumulative = 0;
-    var currentIndex = 1;
+    var currentIndex = 0;
     allRolls.forEach(function (roll) {
         if (currentIndex === count - 1) {
             return;
